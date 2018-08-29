@@ -7,7 +7,7 @@
 #include "drake/common/find_resource.h"
 #include "drake/common/is_approx_equal_abstol.h"
 #include "drake/examples/pendulum/pendulum_plant.h"
-#include "drake/examples/pendulum/pendulum_visualizer.h"
+#include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/controllers/linear_quadratic_regulator.h"
@@ -27,8 +27,6 @@ DEFINE_double(target_realtime_rate, 1.0,
               "Simulator::set_target_realtime_rate() for details.");
 
 int DoMain() {
-  lcm::DrakeLcm lcm;
-
   systems::DiagramBuilder<double> builder;
   auto pendulum = builder.AddSystem<PendulumPlant>();
   pendulum->set_name("pendulum");
@@ -55,12 +53,19 @@ int DoMain() {
       builder.AddSystem(systems::controllers::LinearQuadraticRegulator(
           *pendulum, *pendulum_context, Q, R));
   controller->set_name("controller");
-  builder.Connect(pendulum->get_output_port(), controller->get_input_port());
+  builder.Connect(pendulum->get_state_output_port(),
+                  controller->get_input_port());
   builder.Connect(controller->get_output_port(), pendulum->get_input_port());
 
-  auto visualizer = AddPendulumVisualizerAndPublisher(&builder, &lcm);
-  builder.Connect(pendulum->get_output_port(),
-                  visualizer->get_state_input_port());
+  auto scene_graph = builder.AddSystem<geometry::SceneGraph>();
+  pendulum->RegisterGeometry(pendulum->get_parameters(*pendulum_context),
+                             scene_graph);
+  builder.Connect(pendulum->get_geometry_pose_output_port(),
+                  scene_graph->get_source_pose_port(pendulum->source_id()));
+
+  lcm::DrakeLcm lcm;
+  geometry::ConnectVisualization(*scene_graph, &builder, &lcm);
+  geometry::DispatchLoadMessage(*scene_graph, &lcm);
 
   auto diagram = builder.Build();
   systems::Simulator<double> simulator(*diagram);

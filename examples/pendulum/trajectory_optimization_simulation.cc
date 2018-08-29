@@ -6,7 +6,7 @@
 #include "drake/common/find_resource.h"
 #include "drake/common/is_approx_equal_abstol.h"
 #include "drake/examples/pendulum/pendulum_plant.h"
-#include "drake/examples/pendulum/pendulum_visualizer.h"
+#include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/controllers/pid_controlled_system.h"
@@ -87,6 +87,10 @@ int DoMain() {
       builder.AddSystem<systems::TrajectorySource>(pp_xtraj);
   state_trajectory->set_name("state trajectory");
 
+  auto scene_graph = builder.AddSystem<geometry::SceneGraph>();
+  pendulum->RegisterGeometry(pendulum->get_parameters(*context),
+                             scene_graph);
+
   // The choices of PidController constants here are fairly arbitrary,
   // but seem to effectively swing up the pendulum and hold it.
   const double Kp = 10;
@@ -97,15 +101,18 @@ int DoMain() {
           std::move(pendulum), Kp, Ki, Kd);
   pid_controlled_pendulum->set_name("PID Controlled Pendulum");
 
-  lcm::DrakeLcm lcm;
-
   builder.Connect(input_trajectory->get_output_port(),
                   pid_controlled_pendulum->get_control_input_port());
   builder.Connect(state_trajectory->get_output_port(),
                   pid_controlled_pendulum->get_state_input_port());
-  auto visualizer = AddPendulumVisualizerAndPublisher(&builder, &lcm);
-  builder.Connect(pid_controlled_pendulum->get_state_output_port(),
-                  visualizer->get_input_port(0));
+
+  builder.Connect(pendulum->get_geometry_pose_output_port(),
+                  scene_graph->get_source_pose_port(pendulum->source_id()));
+
+  lcm::DrakeLcm lcm;
+  geometry::ConnectVisualization(*scene_graph, &builder, &lcm);
+  geometry::DispatchLoadMessage(*scene_graph, &lcm);
+
 
   auto diagram = builder.Build();
 

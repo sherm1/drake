@@ -28,7 +28,8 @@ PendulumPlant<T>::PendulumPlant()
           systems::SystemTypeTag<pendulum::PendulumPlant>{}) {
   this->DeclareVectorInputPort(PendulumInput<T>());
   state_port_ = this->DeclareVectorOutputPort(PendulumState<T>(),
-                                &PendulumPlant::CopyStateOut).get_index();
+                                              &PendulumPlant::CopyStateOut)
+                    .get_index();
   this->DeclareContinuousState(PendulumState<T>(), 1 /* num_q */, 1 /* num_v */,
                                0 /* num_z */);
   this->DeclareNumericParameter(PendulumParams<T>());
@@ -36,10 +37,16 @@ PendulumPlant<T>::PendulumPlant()
 
 template <typename T>
 template <typename U>
-PendulumPlant<T>::PendulumPlant(const PendulumPlant<U>& p)
-    : PendulumPlant() {
+PendulumPlant<T>::PendulumPlant(const PendulumPlant<U>& p) : PendulumPlant() {
+  source_id_ = p.source_id();
+  pose_id_ = p.pose_id();
+
   if (source_id_.is_valid()) {
-    this->set_geometry_pose_output_ids(p.source_id(), p.pose_id());
+    geometry_pose_port_ =
+        this->DeclareAbstractOutputPort(
+                geometry::FramePoseVector<T>(source_id_, {pose_id_}),
+                &PendulumPlant<T>::CopyPoseOut)
+            .get_index();
   }
 }
 
@@ -47,8 +54,7 @@ template <typename T>
 PendulumPlant<T>::~PendulumPlant() {}
 
 template <typename T>
-const systems::InputPort<T>& PendulumPlant<T>::get_input_port()
-    const {
+const systems::InputPort<T>& PendulumPlant<T>::get_input_port() const {
   return systems::System<T>::get_input_port(0);
 }
 
@@ -70,21 +76,18 @@ void PendulumPlant<T>::CopyStateOut(const systems::Context<T>& context,
 }
 
 template <typename T>
-void PendulumPlant<T>::CopyPoseOut(
-    const systems::Context<T>& context,
-    geometry::FramePoseVector<T>* poses) const {
+void PendulumPlant<T>::CopyPoseOut(const systems::Context<T>& context,
+                                   geometry::FramePoseVector<T>* poses) const {
   DRAKE_DEMAND(poses->size() == 1);
   DRAKE_DEMAND(poses->source_id() == source_id_);
 
-  const T theta =
-      this->template EvalVectorInput<PendulumState>(context, 0)->theta();
+  const T theta = get_state(context).theta();
 
   poses->clear();
   Isometry3<T> pose = Isometry3<T>::Identity();
   pose.linear() = math::RotationMatrix<T>::MakeYRotation(theta).matrix();
   poses->set_value(pose_id_, pose);
 }
-
 
 template <typename T>
 T PendulumPlant<T>::CalcTotalEnergy(const systems::Context<T>& context) const {
@@ -118,28 +121,9 @@ void PendulumPlant<T>::DoCalcTimeDerivatives(
 }
 
 template <typename T>
-void PendulumPlant<T>::set_geometry_pose_output_ids(
-    geometry::SourceId source_id, geometry::FrameId pose_id) {
-  DRAKE_DEMAND(source_id.is_valid());
-  DRAKE_DEMAND(pose_id.is_valid());
-
-  // This should be called exactly once
-  DRAKE_DEMAND(!source_id_.is_valid());
-  DRAKE_DEMAND(!pose_id_.is_valid());
-  DRAKE_DEMAND(geometry_pose_port_ < 0);
-
-  source_id_ = source_id;
-  pose_id_ = pose_id_;
-
-  // Now allocate the output port.
-  geometry_pose_port_ = this->DeclareAbstractOutputPort(
-      geometry::FramePoseVector<T>(source_id_, {pose_id_}),
-      &PendulumPlant<T>::CopyPoseOut).get_index();
-}
-
-template <typename T>
-void PendulumPlant<T>::RegisterGeometry(const PendulumParams<double>& params,
-                      geometry::SceneGraph<double>* scene_graph) {
+void PendulumPlant<T>::RegisterGeometry(
+    const PendulumParams<double>& params,
+    geometry::SceneGraph<double>* scene_graph) {
   source_id_ = scene_graph->RegisterSource("pendulum");
 
   // The base.
@@ -162,11 +146,18 @@ void PendulumPlant<T>::RegisterGeometry(const PendulumParams<double>& params,
 
   // The mass at the end of the arm.
   scene_graph->RegisterGeometry(
-      source_id, pose_id,
+      source_id_, pose_id_,
       make_unique<GeometryInstance>(
           Isometry3d(Translation3d(0, 0, -params.length())),
           make_unique<Sphere>(params.mass() / 40.), "arm point mass",
           VisualMaterial(Vector4d(0, 0, 1, 1))));
+
+  // Now allocate the output port.
+  geometry_pose_port_ =
+      this->DeclareAbstractOutputPort(
+              geometry::FramePoseVector<T>(source_id_, {pose_id_}),
+              &PendulumPlant<T>::CopyPoseOut)
+          .get_index();
 }
 
 }  // namespace pendulum

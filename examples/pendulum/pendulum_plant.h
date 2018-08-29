@@ -47,7 +47,8 @@ class PendulumPlant final : public systems::LeafSystem<T> {
 
   /// Registers this system as a source for the SceneGraph, adds the
   /// pendulum geometry, and creates the geometry_pose_output_port for this
-  /// system.
+  /// system.  This must be called before the a SceneGraph's Context is
+  /// allocated.
   // TODO(russt): this call only accepts doubles (not T) until SceneGraph
   // supports symbolic.
   void RegisterGeometry(const PendulumParams<double>& params,

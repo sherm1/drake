@@ -34,7 +34,7 @@ int DoMain() {
   builder.Connect(source->get_output_port(), pendulum->get_input_port());
 
   auto scene_graph = builder.AddSystem<geometry::SceneGraph>();
-  RegisterGeometry(params, pendulum, scene_graph);
+  pendulum->RegisterGeometry(params, scene_graph);
   builder.Connect(pendulum->get_geometry_pose_output_port(),
                   scene_graph->get_source_pose_port(pendulum->source_id()));
 
