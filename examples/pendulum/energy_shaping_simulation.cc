@@ -70,20 +70,18 @@ int DoMain() {
   auto controller = builder.AddSystem<PendulumEnergyShapingController>(
       params);
   controller->set_name("controller");
-  builder.Connect(pendulum->get_state_output_port(), controller->get_input_port
-      (0));
+  builder.Connect(pendulum->get_state_output_port(),
+                  controller->get_input_port(0));
   builder.Connect(controller->get_output_port(0), pendulum->get_input_port());
 
-  auto scene_graph = builder.AddSystem<geometry::SceneGraph>();
+  // Add visualization.
+  auto scene_graph = builder.AddSystem<geometry::SceneGraph<double>>();
   pendulum->RegisterGeometry(params, scene_graph);
-  builder.Connect(pendulum->get_geometry_pose_output_port(),
-                  scene_graph->get_source_pose_port(pendulum->source_id()));
-
-  lcm::DrakeLcm lcm;
-  geometry::ConnectVisualization(*scene_graph, &builder, &lcm);
-  geometry::DispatchLoadMessage(*scene_graph, &lcm);
+  geometry::AddVisualization(&builder, *scene_graph, pendulum->source_id(),
+                             pendulum->get_geometry_pose_output_port());
 
   auto diagram = builder.Build();
+
   systems::Simulator<double> simulator(*diagram);
   systems::Context<double>& pendulum_context =
       diagram->GetMutableSubsystemContext(*pendulum,

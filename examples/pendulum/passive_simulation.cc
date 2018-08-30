@@ -3,8 +3,8 @@
 #include <gflags/gflags.h>
 
 #include "drake/common/find_resource.h"
-#include "drake/geometry/geometry_visualization.h"
 #include "drake/examples/pendulum/pendulum_plant.h"
+#include "drake/geometry/geometry_visualization.h"
 #include "drake/lcm/drake_lcm.h"
 #include "drake/systems/analysis/simulator.h"
 #include "drake/systems/framework/diagram.h"
@@ -33,14 +33,11 @@ int DoMain() {
   pendulum->set_name("pendulum");
   builder.Connect(source->get_output_port(), pendulum->get_input_port());
 
+  // Add visualization.
   auto scene_graph = builder.AddSystem<geometry::SceneGraph>();
   pendulum->RegisterGeometry(params, scene_graph);
-  builder.Connect(pendulum->get_geometry_pose_output_port(),
-                  scene_graph->get_source_pose_port(pendulum->source_id()));
-
-  lcm::DrakeLcm lcm;
-  geometry::ConnectVisualization(*scene_graph, &builder, &lcm);
-  geometry::DispatchLoadMessage(*scene_graph, &lcm);
+  geometry::AddVisualization(&builder, *scene_graph, pendulum->source_id(),
+                             pendulum->get_geometry_pose_output_port());
 
   auto diagram = builder.Build();
 

@@ -54,6 +54,12 @@ void ConnectVisualization(const SceneGraph<double>& scene_graph,
                           systems::DiagramBuilder<double>* builder,
                           lcm::DrakeLcmInterface* lcm);
 
+/** Experimental. */
+void AddVisualization(systems::DiagramBuilder<double>* builder,
+                      const SceneGraph<double>& scene_graph,
+                      geometry::SourceId source_id,
+                      const systems::OutputPort<double>& output_to_visualize);
+
 /** Dispatches an LCM load message based on the registered geometry. It should
  be invoked _after_ registration is complete, but before context allocation.
  This assumes you used geometry::ConnectVisualization() build building the
