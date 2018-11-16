@@ -38,6 +38,7 @@ GTEST_TEST(TestSignalLogger, LinearSystemTest) {
 
   // Simulate the simple system from x(0) = 1.0.
   Simulator<double> simulator(*diagram);
+  simulator.set_publish_every_time_step(false);
   Context<double>& context = simulator.get_mutable_context();
   context.get_mutable_continuous_state_vector().SetAtIndex(0, 1.0);
 
@@ -97,6 +98,7 @@ GTEST_TEST(TestSignalLogger, SetPublishPeriod) {
   simulator.StepTo(1);
 
   EXPECT_EQ(simulator.get_num_publishes(), 11);
+  EXPECT_EQ(logger->sample_times().size(), 11);
 }
 
 }  // namespace

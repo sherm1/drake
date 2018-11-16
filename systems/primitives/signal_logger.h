@@ -19,7 +19,8 @@ namespace systems {
 /// (e.g. after a simulation) via a handful of accessor methods.
 /// This class essentially holds a large Eigen matrix for data storage, where
 /// each column corresponds to a data point. This system saves a data point and
-/// the context time whenever its Publish() method is called.
+/// the context time upon Simulator intialization, and then either once per
+/// simulation step (default) or at periodic intervals if a period is specified.
 ///
 /// @tparam T The vector element type, which must be a valid Eigen scalar.
 ///
@@ -35,7 +36,8 @@ class SignalLogger : public LeafSystem<T> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(SignalLogger)
 
-  /// Construct the signal logger system.
+  /// Construct the signal logger system. Logging will occur every simulation
+  /// step unless a period is specified using set_publish_period().
   /// @param input_size Dimension of the (single) input port. This corresponds
   /// to the number of rows of the data matrix.
   /// @param batch_allocation_size Storage is (re)allocated in blocks of
@@ -44,9 +46,11 @@ class SignalLogger : public LeafSystem<T> {
 
   /// Sets the publishing period of this system. See
   /// LeafSystem::DeclarePeriodicPublish() for details about the semantics of
-  /// parameter `period`.
+  /// parameter `period`. Setting a period disables the default every-step
+  /// logging. Each call to this method adds another periodic logging event;
+  /// you probably do not want to call this more than once.
+  /// @pre `period` must be greater than zero.
   void set_publish_period(double period);
-
 
   /// Access the (simulation) time of the logged data.
   Eigen::VectorBlock<const VectorX<T>> sample_times() const {
@@ -65,21 +69,22 @@ class SignalLogger : public LeafSystem<T> {
   const InputPort<T>& get_input_port() const;
 
  private:
-  // Logging is done in this method.
-  void DoPublish(const Context<T>& context,
-                 const std::vector<const systems::PublishEvent<T>*>& events)
-      const override;
-
+  void AddLogEntry(const Context<T>&) const;
+  bool periodic_publish_{false};  // Default is per-step publishing.
   mutable SignalLog<T> log_;
 };
 
 /// Provides a convenience function for adding a SignalLogger, initialized to
 /// the correct size, and connected to another output in a DiagramBuilder.
+/// Logging will occur at Simulator initialization and then at every simulation
+/// step unless you set a publishing period.
 ///
 /// @code
 ///   DiagramBuilder<double> builder;
 ///   auto foo = builder.AddSystem<Foo>("name", 3.14);
 ///   auto logger = LogOutput(foo->get_output_port(), &builder);
+///   // Optional:
+///   logger->set_publish_period(.1);
 /// @endcode
 
 template <typename T>
