@@ -60,26 +60,26 @@ which is adequate for most systems.
 <h3>How the simulation is stepped: simulation mechanics for authors of discrete
 and hybrid systems</h3>
 
-This section is targeted toward users who have created a LeafSystem
-implementing a discrete or hybrid system. For authors of such systems, it can be
-useful to understand the simulation details in order to attain the desired
-state behavior over time. This behavior is dependent on the ordering in
-which discrete events and continuous updates are processed. The basic issues and
-terminology are introduced in
-the @ref discrete_systems module; please look there first before proceeding.
+This section is targeted toward users who have created a LeafSystem implementing
+a discrete or hybrid system. For authors of such systems, it can be useful to
+understand the simulation details in order to attain the desired state behavior
+over time. This behavior is dependent on the ordering in which discrete events
+and continuous updates are processed. The basic issues and terminology are
+introduced in the @ref discrete_systems module; please look there first before
+proceeding.
 
 As mentioned in the referenced document, when a continuous-time system has
 discrete events, the state x can have two values at the event time t, the value
 x⁻(t) _before_ the discrete update occurs, and the value x⁺(t) _after_ the
-discrete update occurs. (These are depicted with ○ and ● markers, respectively, in
-@ref discrete_systems.) Thus the value of the Context, which contains both time
-and state, advances from {t, x⁻(t)} to {t, x⁺(t)} as a result of the update. While
-those Context values are user-visible, the details of stepping here require an
-intermediate value which we'll denote {t, x*(t)}.
+discrete update occurs. (These are depicted with ○ and ● markers, respectively,
+in @ref discrete_systems.) Thus the value of the Context, which contains both
+time and state, advances from {t, x⁻(t)} to {t, x⁺(t)} as a result of the
+update. While those Context values are user-visible, the details of stepping
+here require an intermediate value which we'll denote {t, x*(t)}.
 
-Recall that Drake's state x is partitioned into
-continuous, discrete, and abstract partitions xc, xd, and xa, so
-`x = { xc, xd, xa }`. Within a single step, these are updated in three stages:
+Recall that Drake's state x is partitioned into continuous, discrete, and
+abstract partitions xc, xd, and xa, so `x = { xc, xd, xa }`. Within a single
+step, these are updated in three stages:
    -# Unrestricted update (can change x)
    -# Discrete update (can change only xd)
    -# Continuous update (changes t and xc)
@@ -90,10 +90,9 @@ algorithm.
 
 The following pseudocode uses the above notation to describe the algorithm that
 the %Simulator uses to advance the system by a single time step, and to clarify
-the effects on time and state of each of the update stages above.
-This algorithm is given a starting Context value
-`{tₛ, x⁻(tₛ)}` and returns an end Context value `{tₑ, x⁻(tₑ)}`,
-where tₑ is _no later_ than a given tₘₐₓ.
+the effects on time and state of each of the update stages above. This algorithm
+is given a starting Context value `{tₛ, x⁻(tₛ)}` and returns an end Context
+value `{tₑ, x⁻(tₑ)}`, where tₑ is _no later_ than a given tₘₐₓ.
 
 ```
 // Advance time and state from start value {tₛ, x⁻(tₛ)} to an end value
