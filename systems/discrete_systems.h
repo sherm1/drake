@@ -187,31 +187,33 @@ values at the same time. For a given sample time t, we use the notation x⁻(t) 
 denote the "pre-update" value of the state x, and x⁺(t) to denote the
 "post-update" value of x. So x⁻(t) is the value of x at time t _before_ discrete
 variables are updated, and x⁺(t) the value of x at time t _after_ they are
-updated. Thus if we have `t = n*h` then `x⁻(t) = xₙ` and `x⁺(t) = xₙ₊₁`.
-Similarly, evaluating an input u(t) yields u⁻(t) before discrete updates, and
+updated. Thus if we have `t = n*h` then `x⁻(t) = xₙ` and `x⁺(t) = xₙ₊₁`. Note
+that state-dependent computations may be affected by these updates. For
+example, evaluating an input u(t) yields u⁻(t) before discrete updates, and
 u⁺(t) afterwards, meaning that the input evaluation is carried out using x⁻(t)
 or x⁺(t), respectively.
 
-You can think of xᵢ⁻(tᵢ) as the state's value at the end of the iᵗʰ step, while
-xᵢ⁺(tᵢ) is the value at the beginning of step i+1. Initialization can then be
-considered the 0ᵗʰ "step", so x₀⁻(t₀) occurs at the end of initialization,
-while x₀⁺(t₀) occurs at the start of the first step.
+For a discrete system, you can think of xₙ⁻(tₙ) as the state's value at
+the end of the nᵗʰ discrete step and the beginning of step n+1. Then discrete
+updates occur, yielding xₙ₊₁⁺, with time unchanged at tₙ. Initialization can
+be considered the 0ᵗʰ "step", so x₀⁻(t₀) is the state at the end of
+initialization, while x₁⁺(t₀) is the state just after the discrete updates at
+the start of step 1.
 
 With those distinctions drawn, we can define Drake's state update behavior
 during a time step:
  - `Publish` events at time t see x⁻(t), so if a publish handler evaluates an
    input it sees u⁻(t). This occurs at the end of a step, shown as ○ markers in
    Figure 2.
- - `Discrete` events at time t also see x⁻(t) and u⁻(t), and produce x⁺(t). This
-   occurs at the start of the next step, shown as ● markers in Figure 2.
-   Unrestricted updates precede discrete updates.
+ - `Update` events (of all kinds) at time t also see x⁻(t) and u⁻(t), and
+   produce x⁺(t). This occurs at the start of the next step, shown as ● markers
+   in Figure 2.
  - `Continuous` update (numerical integration and time advancement) starts with
-   x⁺(t) so initial input evaluation yields u⁺(t). Then time and continuous
-   state advance (possibly in small increments) while the discrete variables
-   (state partitions xd and xa) are held constant at their x⁺(t) values, that
-   is, at xd⁺(t) and xa⁺(t). Derivative and input port evaluations at
-   intermediate times t' > t are calculated those discrete values and
-   xc(t') continuous values.
+   x⁺(t). Inputs and derivative evaluations will occur repeatedly as the time
+   and continuous state advance and each evaluation will be performed using
+   updated values for continuous states xc and time t. However, the discrete
+   variables (state partitions xd and xa) are held constant at their x⁺(t)
+   values, that is, at xd⁺(t) and xa⁺(t).
 
 If you define periodic events starting at t=0 as we did in the
 example above, the first publish event occurs at the end of initialization,
