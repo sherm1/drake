@@ -197,7 +197,7 @@ For a discrete system, you can think of xₙ⁻(tₙ) as the state's value at
 the end of the nᵗʰ discrete step and the beginning of step n+1. Then discrete
 updates occur, yielding xₙ₊₁⁺, with time unchanged at tₙ. Initialization can
 be considered the 0ᵗʰ "step", so x₀⁻(t₀) is the state at the end of
-initialization, while x₁⁺(t₀) is the state just after the discrete updates at
+initialization, while x₁⁺(t₀) is the state just after the discrete update at
 the start of step 1.
 
 With those distinctions drawn, we can define Drake's state update behavior
@@ -210,7 +210,7 @@ during a time step:
    in Figure 2.
  - `Continuous` update (numerical integration and time advancement) starts with
    x⁺(t). Input and derivative evaluations will occur repeatedly as the time
-   and continuous state advance and each evaluation will be performed using
+   and continuous state advance. Each evaluation will be performed using
    updated values for continuous states xc and time. However, the discrete
    variables (state partitions xd and xa) are held constant at their x⁺(t)
    values, that is, at xd⁺(t) and xa⁺(t).
