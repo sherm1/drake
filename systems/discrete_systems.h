@@ -182,33 +182,36 @@ been previously sampled (e.g., via a zero-order hold).
 <h3>Timing of publish vs. discrete update events in Drake</h3>
 
 A discrete system viewed in continuous time does not have a unique value at its
-sample times. In Figure 2 the ○ and ● symbols show two possible values at the
-same times. For a given sample time t, we use the notation x⁻(t) to denote the
-"pre-update" value of the state x, and x⁺(t) to denote the "post-update" value
-of x. So x⁻(t) is the value of x at time t _before_ discrete variables are
-updated, and x⁺(t) the value of x at time t _after_ they are updated. Thus if we
-have `t = n*h` then `x⁻(t) = xₙ` and `x⁺(t) = xₙ₊₁`. Similarly, evaluating an
-input u(t) yields u⁻(t) before discrete updates, and u⁺(t) afterwards, meaning
-that the input evaluation is carried out using x⁻(t) or x⁺(t), respectively.
+sample times. In Figure 2, each pair of ○ and ● symbols shows two possible
+values at the same time. For a given sample time t, we use the notation x⁻(t) to
+denote the "pre-update" value of the state x, and x⁺(t) to denote the
+"post-update" value of x. So x⁻(t) is the value of x at time t _before_ discrete
+variables are updated, and x⁺(t) the value of x at time t _after_ they are
+updated. Thus if we have `t = n*h` then `x⁻(t) = xₙ` and `x⁺(t) = xₙ₊₁`.
+Similarly, evaluating an input u(t) yields u⁻(t) before discrete updates, and
+u⁺(t) afterwards, meaning that the input evaluation is carried out using x⁻(t)
+or x⁺(t), respectively.
 
-You can think of xᵢ⁻ as the state's value at the end of the iᵗʰ step, while
-xᵢ⁺ is the value at the beginning of step i+1. Initialization can then be
-considered the 0ᵗʰ "step", so x₀⁻ occurs at the end of initialization,
-while x₀⁺ occurs at the start of the first step.
+You can think of xᵢ⁻(tᵢ) as the state's value at the end of the iᵗʰ step, while
+xᵢ⁺(tᵢ) is the value at the beginning of step i+1. Initialization can then be
+considered the 0ᵗʰ "step", so x₀⁻(t₀) occurs at the end of initialization,
+while x₀⁺(t₀) occurs at the start of the first step.
 
 With those distinctions drawn, we can define Drake's state update behavior
 during a time step:
  - `Publish` events at time t see x⁻(t), so if a publish handler evaluates an
-   input it sees u⁻(t). This occurs at the end of a step, ○ markers in Figure 2.
- - `Discrete` events at time t also see x⁻(t) and u⁻(t), and produce
-   x⁺(t). This occurs at the start of the next step, ● markers in Figure 2.
+   input it sees u⁻(t). This occurs at the end of a step, shown as ○ markers in
+   Figure 2.
+ - `Discrete` events at time t also see x⁻(t) and u⁻(t), and produce x⁺(t). This
+   occurs at the start of the next step, shown as ● markers in Figure 2.
    Unrestricted updates precede discrete updates.
  - `Continuous` update (numerical integration and time advancement) starts with
    x⁺(t) so initial input evaluation yields u⁺(t). Then time and continuous
-   state advance (possibly in small increments) while the discrete variables are
-   held constant at their x⁺(t) values. Input port evaluations at intermediate
-   times t' > t are calculated with the x⁺(t) discrete values and xc(t')
-   continuous values.
+   state advance (possibly in small increments) while the discrete variables
+   (state partitions xd and xa) are held constant at their x⁺(t) values, that
+   is, at xd⁺(t) and xa⁺(t). Derivative and input port evaluations at
+   intermediate times t' > t are calculated those discrete values and
+   xc(t') continuous values.
 
 If you define periodic events starting at t=0 as we did in the
 example above, the first publish event occurs at the end of initialization,
