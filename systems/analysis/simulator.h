@@ -64,25 +64,28 @@ This section is targeted toward users who have created a LeafSystem implementing
 a discrete or hybrid system. For authors of such systems, it can be useful to
 understand the simulation details in order to attain the desired state behavior
 over time. This behavior is dependent on the ordering in which discrete events
-and continuous updates are processed. The basic issues and terminology are
+and continuous updates are processed. (By "discrete events" we mean to include
+any of Drake's event handlers.) The basic issues and terminology are
 introduced in the @ref discrete_systems module; please look there first before
 proceeding.
 
-As mentioned in the referenced document, when a continuous-time system has
-discrete events, the state x can have two values at the event time t, the value
-x⁻(t) _before_ the discrete update occurs, and the value x⁺(t) _after_ the
-discrete update occurs. (These are depicted with ○ and ● markers, respectively,
-in @ref discrete_systems.) Thus the value of the Context, which contains both
-time and state, advances from {t, x⁻(t)} to {t, x⁺(t)} as a result of the
-update. While those Context values are user-visible, the details of stepping
-here require an intermediate value which we'll denote {t, x*(t)}.
+As pictured in @ref discrete_systems, when a continuous-time system has
+discrete events, the state x can have two significant values at the event 
+time t. These are
+ - x⁻(t), the value of x _before_ the discrete update occurs (○ markers), and 
+ - x⁺(t), the value of x _after_ the discrete update occurs (● markers).
+
+Thus the value of the Context, which contains both time and state, advances 
+from {t, x⁻(t)} to {t, x⁺(t)} as a result of the update. While those Context 
+values are user-visible, the details of stepping here require an intermediate 
+value which we'll denote {t, x*(t)}.
 
 Recall that Drake's state x is partitioned into continuous, discrete, and
 abstract partitions xc, xd, and xa, so `x = { xc, xd, xa }`. Within a single
 step, these are updated in three stages:
-   -# Unrestricted update (can change x)
-   -# Discrete update (can change only xd)
-   -# Continuous update (changes t and xc)
+  -# Unrestricted update (can change x)
+  -# Discrete update (can change only xd)
+  -# Continuous update (changes t and xc)
 
 Where needed we extend the above notation to xc⁻, xa⁺, etc. to indicate the
 value of an individual partition at a particular stage of the stepping
@@ -452,7 +455,7 @@ class Simulator {
 
   bool IntegrateContinuousState(const T& next_publish_dt,
                                 const T& next_update_dt,
-                                const T& time_of_next_event,
+                                const T& time_of_next_timed_event,
                                 const T& boundary_dt,
                                 CompositeEventCollection<T>* events);
 
@@ -998,7 +1001,7 @@ void Simulator<T>::IsolateWitnessTriggers(
 template <class T>
 bool Simulator<T>::IntegrateContinuousState(
     const T& next_publish_dt, const T& next_update_dt,
-    const T& time_of_next_event, const T& boundary_dt,
+    const T& time_of_next_timed_event, const T& boundary_dt,
     CompositeEventCollection<T>* events) {
   using std::abs;
 
@@ -1012,16 +1015,16 @@ bool Simulator<T>::IntegrateContinuousState(
   const VectorX<T> x0 = context.get_continuous_state().CopyToVector();
 
   // Note: this function is only called in one place and under the conditions
-  // that (1) t0 + next_update_dt equals *either* time_of_next_event *or*
+  // that (1) t0 + next_update_dt equals *either* time_of_next_timed_event *or*
   // infinity and (2) t0 + next_publish_dt equals *either*
-  // time_of_next_event or infinity. This function should work without
+  // time_of_next_timed_event or infinity. This function should work without
   // these assumptions being valid but might benefit from additional review.
   const double inf = std::numeric_limits<double>::infinity();
   const double zero_tol = 10 * std::numeric_limits<double>::epsilon();
   DRAKE_ASSERT(next_update_dt == inf ||
-      abs(t0 + next_update_dt - time_of_next_event) < zero_tol);
+      abs(t0 + next_update_dt - time_of_next_timed_event) < zero_tol);
   DRAKE_ASSERT(next_publish_dt == inf ||
-      abs(t0 + next_publish_dt - time_of_next_event) < zero_tol);
+      abs(t0 + next_publish_dt - time_of_next_timed_event) < zero_tol);
 
   // Get the set of witness functions active at the current state.
   const System<T>& system = get_system();
@@ -1124,7 +1127,7 @@ bool Simulator<T>::IntegrateContinuousState(
     case IntegratorBase<T>::kReachedPublishTime:
       // Next line sets the time to the exact event time rather than
       // introducing rounding error by summing the context time + dt.
-      context_->set_time(time_of_next_event);
+      context_->set_time(time_of_next_timed_event);
       return true;            // Timed event hit.
       break;
 
