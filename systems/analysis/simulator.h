@@ -70,14 +70,14 @@ introduced in the @ref discrete_systems module; please look there first before
 proceeding.
 
 As pictured in @ref discrete_systems, when a continuous-time system has
-discrete events, the state x can have two significant values at the event 
+discrete events, the state x can have two significant values at the event
 time t. These are
- - x⁻(t), the value of x _before_ the discrete update occurs (○ markers), and 
+ - x⁻(t), the value of x _before_ the discrete update occurs (○ markers), and
  - x⁺(t), the value of x _after_ the discrete update occurs (● markers).
 
-Thus the value of the Context, which contains both time and state, advances 
-from {t, x⁻(t)} to {t, x⁺(t)} as a result of the update. While those Context 
-values are user-visible, the details of stepping here require an intermediate 
+Thus the value of the Context, which contains both time and state, advances
+from {t, x⁻(t)} to {t, x⁺(t)} as a result of the update. While those Context
+values are user-visible, the details of stepping here require an intermediate
 value which we'll denote {t, x*(t)}.
 
 Recall that Drake's state x is partitioned into continuous, discrete, and
@@ -95,7 +95,10 @@ The following pseudocode uses the above notation to describe the algorithm that
 the %Simulator uses to advance the system by a single time step, and to clarify
 the effects on time and state of each of the update stages above. This algorithm
 is given a starting Context value `{tₛ, x⁻(tₛ)}` and returns an end Context
-value `{tₑ, x⁻(tₑ)}`, where tₑ is _no later_ than a given tₘₐₓ.
+value `{tₑ, x⁻(tₑ)}`, where tₑ is _no later_ than a given tₘₐₓ. Note that
+any quantities that are _computed_ from time and state, such as inputs u and
+time derivatives ẋc will be computed using the current values of time and
+state at each stage of the computation.
 
 ```
 // Advance time and state from start value {tₛ, x⁻(tₛ)} to an end value
