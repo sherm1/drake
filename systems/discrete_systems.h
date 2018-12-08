@@ -209,9 +209,9 @@ during a time step:
    produce x⁺(t). This occurs at the start of the next step, shown as ● markers
    in Figure 2.
  - `Continuous` update (numerical integration and time advancement) starts with
-   x⁺(t). Inputs and derivative evaluations will occur repeatedly as the time
+   x⁺(t). Input and derivative evaluations will occur repeatedly as the time
    and continuous state advance and each evaluation will be performed using
-   updated values for continuous states xc and time t. However, the discrete
+   updated values for continuous states xc and time. However, the discrete
    variables (state partitions xd and xa) are held constant at their x⁺(t)
    values, that is, at xd⁺(t) and xa⁺(t).
 
