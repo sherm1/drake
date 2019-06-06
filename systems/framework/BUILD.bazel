@@ -408,10 +408,12 @@ drake_cc_library(
     srcs = [
         "system.cc",
         "witness_function.cc",
+        "system_variable.cc",
     ],
     hdrs = [
         "system.h",
         "witness_function.h",
+        "system_variable.h",
     ],
     deps = [
         ":context",

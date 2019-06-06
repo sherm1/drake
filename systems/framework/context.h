@@ -112,6 +112,20 @@ class Context : public ContextBase {
     return count;
   }
 
+  // TODO(sherm1) Add SystemVariable values to Context for real.
+  const VectorX<T>& get_variable_value(SystemVariableIndex index) const {
+    unused(index);
+    static VectorX<T> dummy;
+    return dummy;
+  }
+
+  template <typename ValueType>
+  const ValueType& get_variable_value(SystemVariableIndex index) const {
+    unused(index);
+    static ValueType dummy;
+    return dummy;
+  }
+
   /// Returns the number of continuous state variables `xc = {q, v, z}`.
   int num_continuous_states() const {
     return get_continuous_state().size();
