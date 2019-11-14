@@ -16,9 +16,9 @@ drake_cc_package_library(
     name = "tree",
     deps = [
         ":articulated_body_inertia",
+        ":multibody_element",
         ":multibody_tree_caches",
         ":multibody_tree_core",
-        ":multibody_tree_element",
         ":multibody_tree_indexes",
         ":multibody_tree_topology",
         ":rotational_inertia",
@@ -74,10 +74,10 @@ drake_cc_library(
 )
 
 drake_cc_library(
-    name = "multibody_tree_element",
+    name = "multibody_element",
     srcs = [],
     hdrs = [
-        "multibody_tree_element.h",
+        "multibody_element.h",
     ],
     deps = [
         ":multibody_tree_topology",
@@ -144,8 +144,8 @@ drake_cc_library(
     # "//multibody/tree" broadly, not just ":multibody_tree_core".
     visibility = ["//visibility:private"],
     deps = [
+        ":multibody_element",
         ":multibody_tree_caches",
-        ":multibody_tree_element",
         ":multibody_tree_indexes",
         ":spatial_inertia",
         "//common:autodiff",
