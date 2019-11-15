@@ -1,8 +1,9 @@
 #pragma once
 
-#include "drake/multibody/tree/multibody_element.h"
+#warning DRAKE DEPRECATED: The header drake/multibody/tree/multibody_tree_element.h is being removed on or after 2020-03-01. Please use drake/multibody/tree/multibody_element.h instead.
 
 #include "drake/common/drake_deprecated.h"
+#include "drake/multibody/tree/multibody_element.h"
 
 namespace drake {
 namespace multibody {

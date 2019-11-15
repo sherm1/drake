@@ -7,7 +7,11 @@
 namespace drake {
 namespace multibody {
 
+// Make sure we can access the deprecated alias and that it's identical to the
+// referent.
+
 using A = MultibodyElement<Joint, double, JointIndex>;
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 using B = MultibodyTreeElement<Joint<double>, JointIndex>;

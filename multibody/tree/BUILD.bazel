@@ -87,6 +87,9 @@ drake_cc_library(
 
 drake_cc_googletest(
     name = "multibody_tree_element_test",
+    # Ignore #warning for deprecation via command-line, since "GCC diagnostic"
+    # does not suppress it.
+    copts = ["-Wno-cpp"],
     deps = [
         ":multibody_element",
         ":multibody_tree_core",
