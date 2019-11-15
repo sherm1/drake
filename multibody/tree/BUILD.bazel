@@ -78,9 +78,18 @@ drake_cc_library(
     srcs = [],
     hdrs = [
         "multibody_element.h",
+        "multibody_tree_element.h",
     ],
     deps = [
         ":multibody_tree_topology",
+    ],
+)
+
+drake_cc_googletest(
+    name = "multibody_tree_element_test",
+    deps = [
+        ":multibody_element",
+        ":multibody_tree_core",
     ],
 )
 
