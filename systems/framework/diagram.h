@@ -915,15 +915,6 @@ class Diagram : public System<T>, internal::SystemParentServiceInterface {
   }
 
  private:
-  // Visit all contained subsystems recursively to sum up all the Context
-  // partition sizes that will be needed for the Diagram Context.
-  void AddInContextSizes(SystemBase::ContextSizes* sizes) const final {
-    for (const auto& system : registered_systems_) {
-      // Recurse to pick up everything.
-      SystemBase::AddInContextSizes(*system, sizes);
-    }
-  }
-
   std::unique_ptr<AbstractValue> DoAllocateInput(
       const InputPort<T>& input_port) const final {
     // Ask the subsystem to perform the allocation.
@@ -1536,7 +1527,10 @@ class Diagram : public System<T>, internal::SystemParentServiceInterface {
             &System<T>::AllocateForcedUnrestrictedUpdateEventCollection));
 
     // Total up all needed Context resources.
-    AddInContextSizes(&this->get_mutable_context_sizes());
+    SystemBase::ContextSizes& sizes = this->get_mutable_context_sizes();
+    for (const auto& system : registered_systems_) {
+      sizes += SystemBase::get_context_sizes(*system);
+    }
   }
 
   // Exposes the given port as an input of the Diagram.

@@ -1109,16 +1109,10 @@ class SystemBase : public internal::SystemMessageInterface {
   during LeafSystem or Diagram construction. */
   ContextSizes& get_mutable_context_sizes() { return context_sizes_; }
 
-  /** Adds in Context resources sizes needed by this System and all its
-  child subsystems. LeafSystems should just add in their already-accumulated
-  ContextSizes data. */
-  virtual void AddInContextSizes(ContextSizes* sizes) const = 0;
-
-  /** Allows Diagram to access protected AddInContextSizes()
-  recursively on its subsystems. */
-  static void AddInContextSizes(const SystemBase& system,
-                                ContextSizes* sizes) {
-    return system.AddInContextSizes(sizes);
+  /** Allows Diagram to access protected get_context_sizes() recursively on its
+  subsystems. */
+  static const ContextSizes& get_context_sizes(const SystemBase& system) {
+    return system.get_context_sizes();
   }
 
   // TODO(jwnimmer-tri) On 2020-05-01, when CheckValidContext() has been

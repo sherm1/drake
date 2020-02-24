@@ -128,8 +128,6 @@ class TestSystem : public System<double> {
   }
 
  protected:
-  void AddInContextSizes(ContextSizes*) const final {}
-
   std::unique_ptr<AbstractValue> DoAllocateInput(
       const InputPort<double>&) const final {
     return {};
@@ -566,10 +564,6 @@ class ValueIOTestSystem : public System<T> {
 
   ~ValueIOTestSystem() override {}
 
-  void AddInContextSizes(SystemBase::ContextSizes*) const final {
-    ADD_FAILURE() << "Implementation is required, but unused here.";
-  }
-
   T DoCalcWitnessValue(const Context<T>&,
                        const WitnessFunction<T>&) const override {
     ADD_FAILURE() << "This system uses no witness functions.";
@@ -922,10 +916,6 @@ class ComputationTestSystem final : public System<double> {
   }
 
  private:
-  void AddInContextSizes(ContextSizes*) const final {
-    ADD_FAILURE() << "Implementation is required, but unused here.";
-  }
-
   // Two discrete variable groups of lengths 2 and 4.
   std::unique_ptr<DiscreteValues<double>> AllocateDiscreteVariables()
       const final {

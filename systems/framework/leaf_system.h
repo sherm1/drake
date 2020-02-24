@@ -2448,30 +2448,6 @@ class LeafSystem : public System<T> {
   using SystemBase::NextInputPortName;
   using SystemBase::NextOutputPortName;
 
-  void AddInContextSizes(SystemBase::ContextSizes* sizes) const final {
-    DRAKE_DEMAND(sizes != nullptr);
-    const SystemBase::ContextSizes& context_sizes = this->get_context_sizes();
-
-    // Some sanity checks.
-    const int num_continuous_states = context_sizes.num_generalized_positions +
-                                      context_sizes.num_generalized_velocities +
-                                      context_sizes.num_misc_continuous_states;
-    DRAKE_DEMAND(num_continuous_states ==
-                 (model_continuous_state_vector_
-                      ? model_continuous_state_vector_->size()
-                      : 0));
-    DRAKE_DEMAND(context_sizes.num_abstract_states ==
-                 model_abstract_states_.size());
-    DRAKE_DEMAND(context_sizes.num_discrete_state_groups ==
-                 model_discrete_state_.num_groups());
-    DRAKE_DEMAND(context_sizes.num_numeric_parameter_groups ==
-                 model_numeric_parameters_.size());
-    DRAKE_DEMAND(context_sizes.num_abstract_parameters ==
-                 model_abstract_parameters_.size());
-
-    (*sizes) += this->get_context_sizes();
-  }
-
   // Either clones the model_value, or else for vector ports allocates a
   // BasicVector, or else for abstract ports throws an exception.
   std::unique_ptr<AbstractValue> DoAllocateInput(
