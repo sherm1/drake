@@ -37,17 +37,20 @@ class PendulumParameters {
       double mass = 1.0,
       double length = 0.5,
       double damping = 0.1,
-      double gravity = 9.81) :
+      double gravity = 9.81,
+      double gear_reduction = 1.) :
       mass_(mass),
       length_(length),
       damping_(damping),
-      g_(gravity) {}
+      g_(gravity),
+      gear_reduction_(gear_reduction) {}
 
   // getters for pendulum parameters
   double m() const { return mass_; }
   double l() const { return length_; }
   double damping() const { return damping_; }
   double g() const { return g_; }
+  double gear_reduction() const { return gear_reduction_; }
   // Radius of the sphere used to visualize the point mass
   double point_mass_radius() const { return 0.025; }
   // Radius of the cylinder used to visualize the massless rod
@@ -57,6 +60,9 @@ class PendulumParameters {
   const std::string& body_name() const { return body_name_; }
   const std::string& pin_joint_name() const { return pin_joint_name_; }
   const std::string& actuator_name() const { return actuator_name_; }
+
+  void set_damping(double damping) { damping_ = damping; }
+  void set_gear_reduction(double reduction) { gear_reduction_ = reduction; }
 
  private:
   // Helper method for NaN initialization.
@@ -69,7 +75,8 @@ class PendulumParameters {
   double mass_{nan()},    // In kilograms.
       length_{nan()},     // In meters.
       damping_{nan()},    // Damping in N⋅m⋅s.
-      g_{nan()};          // In m/s².
+      g_{nan()},          // In m/s².
+      gear_reduction_{1}; // unitless
 
   // Modeling elements' names.
   std::string body_name_{"PointMass"};

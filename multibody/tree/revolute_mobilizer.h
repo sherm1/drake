@@ -48,8 +48,10 @@ class RevoluteMobilizer final : public MobilizerImpl<T, 1, 1> {
   /// root of machine epsilon.
   RevoluteMobilizer(const Frame<T>& inboard_frame_F,
                     const Frame<T>& outboard_frame_M,
-                    const Vector3<double>& axis_F) :
-      MobilizerBase(inboard_frame_F, outboard_frame_M), axis_F_(axis_F) {
+                    const Vector3<double>& axis_F,
+                    double gear_reduction) :
+      MobilizerBase(inboard_frame_F, outboard_frame_M), axis_F_(axis_F),
+      gear_reduction_(gear_reduction) {
     double kEpsilon = std::sqrt(std::numeric_limits<double>::epsilon());
     DRAKE_THROW_UNLESS(!axis_F.isZero(kEpsilon));
     axis_F_.normalize();
@@ -185,6 +187,8 @@ class RevoluteMobilizer final : public MobilizerImpl<T, 1, 1> {
 
   // Default joint axis expressed in the inboard frame F.
   Vector3<double> axis_F_;
+
+  const double gear_reduction_;
 };
 
 }  // namespace internal

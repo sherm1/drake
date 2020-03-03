@@ -64,10 +64,12 @@ class RevoluteJoint final : public Joint<T> {
   RevoluteJoint(const std::string& name,
                 const Frame<T>& frame_on_parent, const Frame<T>& frame_on_child,
                 const Vector3<double>& axis,
-                double damping = 0) :
+                double damping = 0,
+                std::optional<double> gear_reduction = std::nullopt) :
       RevoluteJoint<T>(name, frame_on_parent, frame_on_child, axis,
                        -std::numeric_limits<double>::infinity(),
-                       std::numeric_limits<double>::infinity(), damping) {}
+                       std::numeric_limits<double>::infinity(), damping,
+                       gear_reduction) {}
 
   /// Constructor to create a revolute joint between two bodies so that
   /// frame F attached to the parent body P and frame M attached to the child
@@ -102,7 +104,8 @@ class RevoluteJoint final : public Joint<T> {
   RevoluteJoint(const std::string& name, const Frame<T>& frame_on_parent,
                 const Frame<T>& frame_on_child, const Vector3<double>& axis,
                 double pos_lower_limit, double pos_upper_limit,
-                double damping = 0)
+                double damping = 0,
+                std::optional<double> gear_reduction = std::nullopt)
       : Joint<T>(name, frame_on_parent, frame_on_child,
                  VectorX<double>::Constant(1, pos_lower_limit),
                  VectorX<double>::Constant(1, pos_upper_limit),
@@ -119,6 +122,7 @@ class RevoluteJoint final : public Joint<T> {
     DRAKE_THROW_UNLESS(damping >= 0);
     axis_ = axis.normalized();
     damping_ = damping;
+    gear_reduction_ = gear_reduction.value_or(1.);
   }
 
   const std::string& type_name() const override {
@@ -136,6 +140,8 @@ class RevoluteJoint final : public Joint<T> {
 
   /// Returns `this` joint's damping constant in N⋅m⋅s.
   double damping() const { return damping_; }
+
+  double gear_reduction() const { return gear_reduction_; }
 
   /// Returns the position lower limit for `this` joint in radians.
   double position_lower_limit() const {
@@ -371,6 +377,9 @@ class RevoluteJoint final : public Joint<T> {
 
   // This joint's damping constant in N⋅m⋅s.
   double damping_{0};
+
+  // This joint's reduction factor.
+  double gear_reduction_{1};
 };
 
 template <typename T> const char RevoluteJoint<T>::kTypeName[] = "revolute";

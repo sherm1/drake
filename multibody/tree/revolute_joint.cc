@@ -21,7 +21,8 @@ std::unique_ptr<Joint<ToScalar>> RevoluteJoint<T>::TemplatedDoCloneToScalar(
   auto joint_clone = std::make_unique<RevoluteJoint<ToScalar>>(
       this->name(), frame_on_parent_body_clone, frame_on_child_body_clone,
       this->revolute_axis(), this->position_lower_limits()[0],
-      this->position_upper_limit(), this->damping());
+      this->position_upper_limit(), this->damping(),
+      this->gear_reduction());
   joint_clone->set_velocity_limits(this->velocity_lower_limits(),
                                    this->velocity_upper_limits());
   joint_clone->set_acceleration_limits(this->acceleration_lower_limits(),
@@ -56,7 +57,7 @@ std::unique_ptr<typename Joint<T>::BluePrint>
 RevoluteJoint<T>::MakeImplementationBlueprint() const {
   auto blue_print = std::make_unique<typename Joint<T>::BluePrint>();
   auto revolute_mobilizer = std::make_unique<internal::RevoluteMobilizer<T>>(
-      this->frame_on_parent(), this->frame_on_child(), axis_);
+      this->frame_on_parent(), this->frame_on_child(), axis_, gear_reduction_);
   revolute_mobilizer->set_default_position(this->default_positions());
   blue_print->mobilizers_.push_back(std::move(revolute_mobilizer));
   return blue_print;

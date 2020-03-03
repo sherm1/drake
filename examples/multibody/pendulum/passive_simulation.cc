@@ -1,3 +1,4 @@
+#include <iostream>
 #include <memory>
 
 #include <gflags/gflags.h>
@@ -41,14 +42,28 @@ DEFINE_string(integration_scheme, "runge_kutta3",
               "Integration scheme to be used. Available options are:"
               "'runge_kutta3','implicit_euler','semi_explicit_euler'");
 
+DEFINE_double(duration, 0, "How long to run.");
+
+DEFINE_double(damping, 0., "Joint damping.");
+
+DEFINE_double(applied_torque, 0., "Torque applied at joint (signed).");
+
+DEFINE_double(reduction, 1., "Gear reduction factor (signed).");
+
 int do_main() {
   systems::DiagramBuilder<double> builder;
+
+  std::cout << "damping=" << FLAGS_damping << "\n";
+  std::cout << "applied_torque=" << FLAGS_applied_torque << "\n";
+  std::cout << "reduction=" << FLAGS_reduction << "\n";
 
   SceneGraph<double>& scene_graph = *builder.AddSystem<SceneGraph>();
   scene_graph.set_name("scene_graph");
 
   // The model's parameters:
   PendulumParameters parameters;
+  parameters.set_damping(FLAGS_damping);
+  parameters.set_gear_reduction(FLAGS_reduction);
 
   // Define simulation parameters:
   // Compute a reference time scale to set reasonable values for time step and
@@ -61,7 +76,8 @@ int do_main() {
   const double max_time_step = reference_time_scale / 100;
 
   // Simulate about five periods of oscillation.
-  const double simulation_time = 5.0 * reference_time_scale;
+  const double simulation_time =
+      FLAGS_duration == 0. ? 5.0 * reference_time_scale : FLAGS_duration;
 
   // The target accuracy determines the size of the actual time steps taken
   // whenever a variable time step integrator is used.
@@ -72,10 +88,9 @@ int do_main() {
   const RevoluteJoint<double>& pin =
       pendulum.GetJointByName<RevoluteJoint>(parameters.pin_joint_name());
 
-  // A constant source for a zero applied torque at the pin joint.
-  double applied_torque(0.0);
+  // A constant source for applied torque at the pin joint.
   auto torque_source =
-      builder.AddSystem<systems::ConstantVectorSource>(applied_torque);
+      builder.AddSystem<systems::ConstantVectorSource>(FLAGS_applied_torque);
   torque_source->set_name("Applied Torque");
   builder.Connect(torque_source->get_output_port(),
                   pendulum.get_actuation_input_port());
@@ -96,6 +111,12 @@ int do_main() {
   pin.set_angle(&pendulum_context,  M_PI / 3.0);
 
   systems::Simulator<double> simulator(*diagram, std::move(diagram_context));
+
+  simulator.set_monitor([](const systems::Context<double>& context) {
+    std::cout << context.get_time() << " ";
+    std::cout << context.get_continuous_state_vector() << std::endl;
+    return systems::EventStatus::Succeeded();
+  });
 
   systems::IntegratorBase<double>* integrator{nullptr};
   if (FLAGS_integration_scheme == "implicit_euler") {

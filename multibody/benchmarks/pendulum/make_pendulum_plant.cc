@@ -60,7 +60,8 @@ MakePendulumPlant(const PendulumParameters& params,
       /* Pin joint outboard frame IS the body frame B. */
       point_mass, std::nullopt,
       Vector3d::UnitY(), /* Pendulum oscillates in the x-z plane. */
-      params.damping());
+      params.damping(),
+      std::optional<double>(params.gear_reduction()));
 
   // Add pendulum's actuator at the pin joint.
   plant->AddJointActuator(params.actuator_name(), pin);

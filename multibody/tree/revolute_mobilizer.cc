@@ -58,7 +58,7 @@ SpatialVelocity<T> RevoluteMobilizer<T>::CalcAcrossMobilizerSpatialVelocity(
     const systems::Context<T>&,
     const Eigen::Ref<const VectorX<T>>& v) const {
   DRAKE_ASSERT(v.size() == kNv);
-  return SpatialVelocity<T>(v[0] * axis_F_, Vector3<T>::Zero());
+  return SpatialVelocity<T>(v[0]/gear_reduction_ * axis_F_, Vector3<T>::Zero());
 }
 
 template <typename T>
@@ -67,7 +67,8 @@ RevoluteMobilizer<T>::CalcAcrossMobilizerSpatialAcceleration(
     const systems::Context<T>&,
     const Eigen::Ref<const VectorX<T>>& vdot) const {
   DRAKE_ASSERT(vdot.size() == kNv);
-  return SpatialAcceleration<T>(vdot[0] * axis_F_, Vector3<T>::Zero());
+  return SpatialAcceleration<T>(vdot[0] / gear_reduction_ * axis_F_,
+                                Vector3<T>::Zero());
 }
 
 template <typename T>
@@ -79,19 +80,19 @@ void RevoluteMobilizer<T>::ProjectSpatialForce(
   // Computes tau = H_FMᵀ * F_Mo_F where H_FM ∈ ℝ⁶ is:
   // H_FM = [axis_Fᵀ; 0ᵀ]ᵀ (see CalcAcrossMobilizerSpatialVelocity().)
   // Therefore H_FMᵀ * F_Mo_F = axis_F.dot(F_Mo_F.translational()):
-  tau[0] = axis_F_.dot(F_Mo_F.rotational());
+  tau[0] = axis_F_.dot(F_Mo_F.rotational()) / gear_reduction_;
 }
 
 template <typename T>
 void RevoluteMobilizer<T>::DoCalcNMatrix(
     const systems::Context<T>&, EigenPtr<MatrixX<T>> N) const {
-  (*N)(0, 0) = 1.0;
+  (*N)(0, 0) = 1.0 / gear_reduction_;
 }
 
 template <typename T>
 void RevoluteMobilizer<T>::DoCalcNplusMatrix(
       const systems::Context<T>&, EigenPtr<MatrixX<T>> Nplus) const {
-  (*Nplus)(0, 0) = 1.0;
+  (*Nplus)(0, 0) = gear_reduction_;
 }
 
 template <typename T>
@@ -102,7 +103,7 @@ void RevoluteMobilizer<T>::MapVelocityToQDot(
   DRAKE_ASSERT(v.size() == kNv);
   DRAKE_ASSERT(qdot != nullptr);
   DRAKE_ASSERT(qdot->size() == kNq);
-  *qdot = v;
+  *qdot = v / gear_reduction_;
 }
 
 template <typename T>
@@ -113,7 +114,7 @@ void RevoluteMobilizer<T>::MapQDotToVelocity(
   DRAKE_ASSERT(qdot.size() == kNq);
   DRAKE_ASSERT(v != nullptr);
   DRAKE_ASSERT(v->size() == kNv);
-  *v = qdot;
+  *v = qdot * gear_reduction_;
 }
 
 template <typename T>
@@ -126,7 +127,8 @@ RevoluteMobilizer<T>::TemplatedDoCloneToScalar(
   const Frame<ToScalar>& outboard_frame_clone =
       tree_clone.get_variant(this->outboard_frame());
   return std::make_unique<RevoluteMobilizer<ToScalar>>(
-      inboard_frame_clone, outboard_frame_clone, this->revolute_axis());
+      inboard_frame_clone, outboard_frame_clone, this->revolute_axis(),
+      gear_reduction_);
 }
 
 template <typename T>
