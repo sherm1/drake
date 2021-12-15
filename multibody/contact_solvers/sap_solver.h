@@ -166,8 +166,15 @@ class SapSolver final : public ContactSolver<T> {
     DRAKE_DEFAULT_COPY_AND_MOVE_AND_ASSIGN(Cache);
     Cache() = default;
 
+    // Each of these cache entries must know who depends on it and must make
+    // sure those get invalidated when it does.
+
     struct VelocitiesCache {
       void Resize(int nc) { vc.resize(3 * nc); }
+      void Invalidate(Cache* cache) {
+        valid = false;
+        cache->mutable_impulses_cache();
+      }
       bool valid{false};
       VectorX<T> vc;  // constraint velocities vc = J⋅v.
     };
@@ -177,8 +184,13 @@ class SapSolver final : public ContactSolver<T> {
         y.resize(3 * nc);
         gamma.resize(3 * nc);
       }
+      void Invalidate(Cache* cache) {
+        valid = false;
+        cache->mutable_momentum_cache();
+        cache->mutable_cost_cache();
+      }
       bool valid{false};
-      VectorX<T> y;      // The (unprojected) impulse y = −R⁻¹⋅(vc − v̂).
+      VectorX<T> y;  // The (unprojected) impulse y = −R⁻¹⋅(vc − v̂).
       VectorX<T> gamma;  // Impulse γ = P(y), with P(y) the projection operator.
     };
 
@@ -188,6 +200,10 @@ class SapSolver final : public ContactSolver<T> {
         jc.resize(nv);
         momentum_change.resize(nv);
       }
+      void Invalidate(Cache* cache) {
+        valid = false;
+        cache->mutable_gradients_cache();
+      }
       bool valid{false};
       VectorX<T> p;                // Generalized momentum p = A⋅v
       VectorX<T> jc;               // Generalized impulse jc = Jᵀ⋅γ
@@ -195,10 +211,11 @@ class SapSolver final : public ContactSolver<T> {
     };
 
     struct CostCache {
+      void Invalidate(Cache*) { valid = false; }
       bool valid{false};
-      T ell{0.0};   // Total primal cost, = ellA + ellR.
-      T ellA{0.0};  // Velocities cost, = 1/2⋅(v−v*)ᵀ⋅A⋅(v−v*).
-      T ellR{0.0};  // Regularizer cost, = 1/2⋅γᵀ⋅R⋅γ.
+      T ell{NAN};   // Total primal cost, = ellA + ellR.
+      T ellA{NAN};  // Velocities cost, = 1/2⋅(v−v*)ᵀ⋅A⋅(v−v*).
+      T ellR{NAN};  // Regularizer cost, = 1/2⋅γᵀ⋅R⋅γ.
     };
 
     struct GradientsCache {
@@ -206,6 +223,10 @@ class SapSolver final : public ContactSolver<T> {
         ell_grad_v.resize(nv);
         dPdy.resize(nc);
         G.resize(nc, Matrix3<T>::Zero());
+      }
+      void Invalidate(Cache* cache) {
+        valid = false;
+        cache->mutable_search_direction_cache();
       }
       bool valid{false};
       VectorX<T> ell_grad_v;         // Gradient of the cost in v.
@@ -218,7 +239,9 @@ class SapSolver final : public ContactSolver<T> {
         dv.resize(nv);
         dp.resize(nv);
         dvc.resize(3 * nc);
+        d2ellA_dalpha2 = NAN;
       }
+      void Invalidate(Cache*) { valid = false; }
       bool valid{false};
       VectorX<T> dv;          // Search direction.
       VectorX<T> dp;          // Momentum update Δp = A⋅Δv.
@@ -227,33 +250,23 @@ class SapSolver final : public ContactSolver<T> {
     };
 
     // Resizes all the cache entries to store quantities for a problem with nv
-    // generalized velocities and nc contact constraints.
+    // generalized velocities and nc contact constraints. All existing
+    // data is lost.
     void Resize(int nv, int nc);
 
     // Marks the cache as invalid. This is meant to be called by State when
     // mutating its internal state.
-    void mark_invalid() {
-      velocities_cache_.valid = false;
-      impulses_cache_.valid = false;
-      momentum_cache_.valid = false;
-      cost_cache_.valid = false;
-      gradients_cache_.valid = false;
-      search_direction_cache_.valid = false;
+    void Invalidate() {
+      velocities_cache_.Invalidate(this);
     }
 
-    // Methods for const access of cache entries. These methods are meant to be
-    // used only within Eval methods. Cache entries must be accessed through the
+   private:
+    friend class SapSolver<T>;
+
+    // Dangerous methods for const access of cache entries; you must check the
+    // valid bit before using. These methods are meant to be used only within
+    // SapSolver's Eval methods. Cache entries must be accessed through the
     // corresponding Eval.
-    // TODO(amcastro-tri): Per review of #16080, remove these const access
-    // methods so that there is no possibility of a developer accessing an
-    // out-of-date cache entry. Consider a design where pre-processed data and
-    // calc methods are part of a SapModel class (to replace PreProcessedData).
-    // Then State would be the only object that knows how to access (valid)
-    // cache entries. Like so:
-    //   SapModel<T> model;
-    //   ... Model initialized at pre-process time.
-    //   State state(...)
-    //   const VectorX<T>& vc = state.EvalVelocitiesCache(model).vc;
     const VelocitiesCache& velocities_cache() const {
       return velocities_cache_;
     }
@@ -266,52 +279,40 @@ class SapSolver final : public ContactSolver<T> {
     }
 
     // Methods for mutable access of cache entries. The specific cache entry and
-    // its dependents are marked invalid before it is returned. These methods
-    // are meant to be used only within Eval methods. Cache entries must be
-    // accessed through the corresponding Eval.
+    // its dependents are marked invalid before it is returned. External use of
+    // these methods must be only within SapSolver's Eval methods. (Internally
+    // we use them for the invalidation side effect.)
     VelocitiesCache& mutable_velocities_cache() {
-      velocities_cache_.valid = false;
-      impulses_cache_.valid = false;
-      momentum_cache_.valid = false;
-      cost_cache_.valid = false;
-      gradients_cache_.valid = false;
-      search_direction_cache_.valid = false;
+      velocities_cache_.Invalidate(this);
       return velocities_cache_;
     }
     ImpulsesCache& mutable_impulses_cache() {
-      impulses_cache_.valid = false;
-      momentum_cache_.valid = false;
-      cost_cache_.valid = false;
-      gradients_cache_.valid = false;
-      search_direction_cache_.valid = false;
+      impulses_cache_.Invalidate(this);
       return impulses_cache_;
     }
     MomentumCache& mutable_momentum_cache() {
-      momentum_cache_.valid = false;
-      gradients_cache_.valid = false;
-      search_direction_cache_.valid = false;
+      momentum_cache_.Invalidate(this);
       return momentum_cache_;
     }
     CostCache& mutable_cost_cache() {
-      cost_cache_.valid = false;
+      cost_cache_.Invalidate(this);
       return cost_cache_;
     }
     GradientsCache& mutable_gradients_cache() {
-      gradients_cache_.valid = false;
-      search_direction_cache_.valid = false;
+      gradients_cache_.Invalidate(this);
       return gradients_cache_;
     }
     SearchDirectionCache& mutable_search_direction_cache() {
-      search_direction_cache_.valid = false;
+      search_direction_cache_.Invalidate(this);
       return search_direction_cache_;
     }
 
-   private:
+    // SapSolver must never access these members directly.
     VelocitiesCache velocities_cache_;
-    MomentumCache momentum_cache_;
     ImpulsesCache impulses_cache_;
-    GradientsCache gradients_cache_;
+    MomentumCache momentum_cache_;
     CostCache cost_cache_;
+    GradientsCache gradients_cache_;
     SearchDirectionCache search_direction_cache_;
   };
 
@@ -344,7 +345,7 @@ class SapSolver final : public ContactSolver<T> {
     VectorX<T>& mutable_v() {
       // Mark all cache quantities as invalid since they all are a function of
       // velocity.
-      cache_.mark_invalid();
+      cache_.Invalidate();
       return v_;
     }
 
