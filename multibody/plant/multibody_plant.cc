@@ -25,6 +25,7 @@
 #include "drake/multibody/plant/hydroelastic_traction_calculator.h"
 #include "drake/multibody/plant/make_discrete_update_manager.h"
 #include "drake/multibody/plant/slicing_and_indexing.h"
+#include "drake/multibody/topology/link_joint_graph.h"
 #include "drake/multibody/tree/prismatic_joint.h"
 #include "drake/multibody/tree/quaternion_floating_joint.h"
 #include "drake/multibody/tree/revolute_joint.h"
@@ -312,7 +313,6 @@ MultibodyPlant<T>::MultibodyPlant(
   // it less brittle.
   visual_geometries_.emplace_back();  // Entries for the "world" body.
   collision_geometries_.emplace_back();
-
   DeclareSceneGraphPorts();
 }
 
@@ -867,7 +867,7 @@ template <typename T>
 std::vector<const Body<T>*> MultibodyPlant<T>::GetBodiesWeldedTo(
     const Body<T>& body) const {
   const std::set<BodyIndex> island =
-      internal_tree().multibody_graph().FindBodiesWeldedTo(body.index());
+      internal_tree().link_joint_graph().FindLinksWeldedTo(body.index());
   // Map body indices to pointers.
   std::vector<const Body<T>*> sub_graph_bodies;
   for (BodyIndex body_index : island) {
@@ -967,7 +967,7 @@ void MultibodyPlant<T>::SetFreeBodyPoseInAnchoredFrame(
   DRAKE_MBP_THROW_IF_NOT_FINALIZED();
   this->ValidateContext(context);
 
-  if (!internal_tree().get_topology().IsBodyAnchored(frame_F.body().index())) {
+  if (!internal_tree().get_topology().IsLinkAnchored(frame_F.body().index())) {
     throw std::logic_error("Frame '" + frame_F.name() +
                            "' must be anchored to the world frame.");
   }
@@ -991,7 +991,7 @@ void MultibodyPlant<T>::CalcSpatialAccelerationsFromVdot(
   internal_tree().CalcSpatialAccelerationsFromVdot(
       context, internal_tree().EvalPositionKinematics(context),
       internal_tree().EvalVelocityKinematics(context), known_vdot, A_WB_array);
-  // Permute BodyNodeIndex -> BodyIndex.
+  // Permute BodyNodeIndex -> LinkIndex.
   // TODO(eric.cousineau): Remove dynamic allocations. Making this in-place
   // still required dynamic allocation for recording permutation indices.
   // Can change implementation once MultibodyTree becomes fully internal.
@@ -999,9 +999,9 @@ void MultibodyPlant<T>::CalcSpatialAccelerationsFromVdot(
   const internal::MultibodyTreeTopology& topology =
       internal_tree().get_topology();
   for (internal::BodyNodeIndex node_index(1);
-       node_index < topology.get_num_body_nodes(); ++node_index) {
-    const BodyIndex body_index = topology.get_body_node(node_index).body;
-    (*A_WB_array)[body_index] = A_WB_array_node[node_index];
+       node_index < topology.num_body_nodes(); ++node_index) {
+    const LinkIndex link_index = topology.get_body_node(node_index).link;
+    (*A_WB_array)[link_index] = A_WB_array_node[node_index];
   }
 }
 
@@ -1078,6 +1078,7 @@ void MultibodyPlant<T>::Finalize() {
   if (geometry_source_is_registered()) {
     ApplyDefaultCollisionFilters();
   }
+
   FinalizePlantOnly();
 
   // Make the manager of discrete updates.
@@ -1316,7 +1317,7 @@ void MultibodyPlant<T>::ApplyDefaultCollisionFilters() {
   }
   // We explicitly exclude collisions within welded subgraphs.
   std::vector<std::set<BodyIndex>> subgraphs =
-      internal_tree().multibody_graph().FindSubgraphsOfWeldedBodies();
+      internal_tree().link_joint_graph().FindSubgraphsOfWeldedLinks();
   for (const auto& subgraph : subgraphs) {
     // Only operate on non-trivial weld subgraphs.
     if (subgraph.size() <= 1) {
@@ -3494,7 +3495,7 @@ void MultibodyPlant<T>::RemoveUnsupportedScalars(
 template <typename T>
 std::vector<std::set<BodyIndex>>
 MultibodyPlant<T>::FindSubgraphsOfWeldedBodies() const {
-  return internal_tree().multibody_graph().FindSubgraphsOfWeldedBodies();
+  return internal_tree().link_joint_graph().FindSubgraphsOfWeldedLinks();
 }
 
 template <typename T>

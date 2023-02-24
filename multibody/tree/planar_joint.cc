@@ -60,10 +60,13 @@ std::unique_ptr<Joint<symbolic::Expression>> PlanarJoint<T>::DoCloneToScalar(
 // in the header file.
 template <typename T>
 std::unique_ptr<typename Joint<T>::BluePrint>
-PlanarJoint<T>::MakeImplementationBlueprint() const {
+PlanarJoint<T>::MakeImplementationBlueprint(bool use_reversed_mobilizer) const {
   auto blue_print = std::make_unique<typename Joint<T>::BluePrint>();
+  const auto [inboard_frame, outboard_frame] =
+      this->tree_frames(use_reversed_mobilizer);
+  // TODO(sherm1) The mobilizer needs to be reversed, not just the frames.
   auto planar_mobilizer = std::make_unique<internal::PlanarMobilizer<T>>(
-      this->frame_on_parent(), this->frame_on_child());
+      *inboard_frame, *outboard_frame);
   planar_mobilizer->set_default_position(this->default_positions());
   blue_print->mobilizer = std::move(planar_mobilizer);
   return blue_print;

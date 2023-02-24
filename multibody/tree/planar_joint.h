@@ -316,8 +316,8 @@ class PlanarJoint final : public Joint<T> {
   }
 
   // Joint<T> overrides:
-  std::unique_ptr<typename Joint<T>::BluePrint> MakeImplementationBlueprint()
-      const final;
+  std::unique_ptr<typename Joint<T>::BluePrint> MakeImplementationBlueprint(
+      bool use_reversed_mobilizer) const final;
 
   std::unique_ptr<Joint<double>> DoCloneToScalar(
       const internal::MultibodyTree<double>& tree_clone) const final;

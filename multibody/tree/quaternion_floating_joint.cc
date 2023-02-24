@@ -57,11 +57,15 @@ QuaternionFloatingJoint<T>::DoCloneToScalar(
 // in the header file.
 template <typename T>
 std::unique_ptr<typename Joint<T>::BluePrint>
-QuaternionFloatingJoint<T>::MakeImplementationBlueprint() const {
+QuaternionFloatingJoint<T>::MakeImplementationBlueprint(
+    bool use_reversed_mobilizer) const {
   auto blue_print = std::make_unique<typename Joint<T>::BluePrint>();
+  const auto [inboard_frame, outboard_frame] =
+      this->tree_frames(use_reversed_mobilizer);
+  // TODO(sherm1) The mobilizer needs to be reversed, not just the frames.
   auto quaternion_floating_mobilizer =
       std::make_unique<internal::QuaternionFloatingMobilizer<T>>(
-          this->frame_on_parent(), this->frame_on_child());
+          *inboard_frame, *outboard_frame);
   quaternion_floating_mobilizer->set_default_position(
       this->default_positions());
   blue_print->mobilizer = std::move(quaternion_floating_mobilizer);
