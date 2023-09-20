@@ -30,6 +30,7 @@ using Eigen::Vector3d;
 using Eigen::Vector4d;
 using Eigen::VectorXd;
 using drake::systems::analysis_test::StatelessSystem;
+using testing::ElementsAreArray;
 
 namespace drake {
 namespace systems {
@@ -3343,41 +3344,23 @@ class EventStatusTestSystem : public LeafSystem<double> {
     publish_severity_ = severity;
   }
 
-  void set_all_did_nothing() {
-    set_unrestricted_severity(EventStatus::kDidNothing);
-    set_discrete_severity(EventStatus::kDidNothing);
-    set_publish_severity(EventStatus::kDidNothing);
-  }
-
-  int unrestricted_count() const { return unrestricted_count_; }
-  int discrete_count() const { return discrete_count_; }
-  int publish_count() const { return publish_count_; }
-
-  void reset() {
-    unrestricted_severity_ = discrete_severity_ = publish_severity_ =
-        EventStatus::kSucceeded;
-    unrestricted_count_ = discrete_count_ = publish_count_ = 0;
-    unrestricted_order_ = discrete_order_ = publish_order_ = -1;
-  }
-
-  static void reset_order() { order_ = 0; }
-
-  // Expected number of event executions of each event.
-  void check_counts(const std::array<int, 3> expected) const {
-    EXPECT_EQ(unrestricted_count_, expected[0]);
-    EXPECT_EQ(discrete_count_, expected[1]);
-    EXPECT_EQ(publish_count_, expected[2]);
-  }
-
-  // Expected sequence number for each event at last execution.
-  void check_order(const std::array<int, 3> expected) const {
-    EXPECT_EQ(unrestricted_order_, expected[0]);
-    EXPECT_EQ(discrete_order_, expected[1]);
-    EXPECT_EQ(publish_order_, expected[2]);
+  // Returns the list of events handled by all EventStatusTestSystem instances,
+  // and clears the list back to empty.
+  static std::vector<std::string> take_static_events() {
+    std::vector<std::string> result = events_singleton();
+    events_singleton().clear();
+    return result;
   }
 
  private:
+  static std::vector<std::string>& events_singleton() {
+    static never_destroyed<std::vector<std::string>> global(
+        std::vector<std::string>{});
+    return global.access();
+  }
+
   EventStatus MakeStatus(std::string id, EventStatus::Severity severity) const {
+    events_singleton().push_back(fmt::format("{} {}", this->get_name(), id));
     switch (severity) {
       case EventStatus::kDidNothing:
         return EventStatus::DidNothing();
@@ -3394,19 +3377,13 @@ class EventStatusTestSystem : public LeafSystem<double> {
 
   EventStatus UnrestrictedHandler(const Context<double>&,
                                   State<double>*) const {
-    ++unrestricted_count_;
-    unrestricted_order_ = order_++;
     return MakeStatus("unrestricted", unrestricted_severity_);
   }
   EventStatus DiscreteHandler(const Context<double>&,
                               DiscreteValues<double>*) const {
-    ++discrete_count_;
-    discrete_order_ = order_++;
     return MakeStatus("discrete", discrete_severity_);
   }
   EventStatus PublishHandler(const Context<double>&) const {
-    ++publish_count_;
-    publish_order_ = order_++;
     return MakeStatus("publish", publish_severity_);
   }
 
@@ -3414,20 +3391,13 @@ class EventStatusTestSystem : public LeafSystem<double> {
   EventStatus::Severity unrestricted_severity_{EventStatus::kSucceeded};
   EventStatus::Severity discrete_severity_{EventStatus::kSucceeded};
   EventStatus::Severity publish_severity_{EventStatus::kSucceeded};
-
-  mutable int unrestricted_count_{0}, unrestricted_order_{-1};
-  mutable int discrete_count_{0}, discrete_order_{-1};
-  mutable int publish_count_{0}, publish_order_{-1};
-  static int order_;
 };
-
-int EventStatusTestSystem::order_ = 0;
 
 // Policy to verify:
 //   1 events are handled in the order the subsystems were added
 //   2 if all events succeed, all get executed and return succeeded
 // 3ab if all events do nothing (a), all get executed and we return did_nothing;
-//     a mix of succeeded & did nothing is succeeded
+//     a mix of succeeded & did nothing is succeeded (b)
 // 4ab if an unrestricted (a) or discrete (b) update fails, we fail immediately
 //     and return a message attributing the error to the right subsystem
 //   5 if a publish event fails, we continue to handle remaining publish events
@@ -3437,7 +3407,7 @@ int EventStatusTestSystem::order_ = 0;
 GTEST_TEST(DiagramEventEvaluation, EventStatusHandling) {
   std::unique_ptr<Diagram<double>> sub_diagram0;
   std::unique_ptr<Diagram<double>> sub_diagram1;
-  EventStatusTestSystem* sys[5];
+  EventStatusTestSystem* sys[5] = {};
 
   {  // Sub diagram 0 has sys0 & sys1.
     DiagramBuilder<double> builder;
@@ -3449,7 +3419,7 @@ GTEST_TEST(DiagramEventEvaluation, EventStatusHandling) {
     sub_diagram0->set_name("sub_diagram0");
   }
 
-  {  // Sub diagram 1 has sys4 & sys5.
+  {  // Sub diagram 1 has sys3 & sys4.
     DiagramBuilder<double> builder;
     sys[3] = builder.AddSystem<EventStatusTestSystem>();
     sys[3]->set_name("sys3");
@@ -3479,96 +3449,96 @@ GTEST_TEST(DiagramEventEvaluation, EventStatusHandling) {
   State<double>& state = context->get_mutable_state();
   DiscreteValues<double>& discrete_state = state.get_mutable_discrete_state();
 
-  auto clear = [&]() {
-    for (int i=0; i < 5; ++i) {
-      auto& system = *sys[i];
-      system.reset();
+  // The event logs should have these strings, when everything succeeds.
+  const std::string all_unrestricted[] = {
+      "sys0 unrestricted", "sys1 unrestricted", "sys2 unrestricted",
+      "sys3 unrestricted", "sys4 unrestricted"};
+  const std::string all_discrete[] = {
+      "sys0 discrete", "sys1 discrete", "sys2 discrete",
+      "sys3 discrete", "sys4 discrete"};
+  const std::string all_publish[] = {
+      "sys0 publish", "sys1 publish", "sys2 publish",
+      "sys3 publish", "sys4 publish"};
+
+  // Some syntatic sugar to reduce boilerplate.
+  auto reset_severity = [sys](EventStatus::Severity severity) {
+    for (EventStatusTestSystem* item : sys) {
+      item->set_unrestricted_severity(severity);
+      item->set_discrete_severity(severity);
+      item->set_publish_severity(severity);
     }
-    EventStatusTestSystem::reset_order();
   };
+  auto take_static_events = &EventStatusTestSystem::take_static_events;
 
   // Policy 1 & 2: Every handler returns success and should be invoked in order.
-  clear();
   EventStatus unrestricted_status = diagram->CalcUnrestrictedUpdate(
       *context, diagram->get_forced_unrestricted_update_events(), &state);
+  EXPECT_TRUE(unrestricted_status.succeeded());
+  EXPECT_THAT(take_static_events(), ElementsAreArray(all_unrestricted));
   EventStatus discrete_status = diagram->CalcDiscreteVariableUpdate(
       *context, diagram->get_forced_discrete_update_events(), &discrete_state);
+  EXPECT_TRUE(discrete_status.succeeded());
+  EXPECT_THAT(take_static_events(), ElementsAreArray(all_discrete));
   EventStatus publish_status =
       diagram->Publish(*context, diagram->get_forced_publish_events());
-
-  EXPECT_TRUE(unrestricted_status.succeeded());
-  EXPECT_TRUE(discrete_status.succeeded());
   EXPECT_TRUE(publish_status.succeeded());
-
-  for (int i = 0; i < 5; ++i) {
-    const auto& system = *sys[i];
-    system.check_counts({1, 1, 1});
-    system.check_order({i, 5 + i, 10 + i});
-  }
+  EXPECT_THAT(take_static_events(), ElementsAreArray(all_publish));
 
   // Policy 3ab: Unrestricted & publish handlers all return did_nothing, so
   // their final status should be did_nothing. One of the discrete handlers
   // succeeds so its final status should be succeeded. Order unchanged from
   // above.
-  clear();
-  for (auto* system : sys) system->set_all_did_nothing();
+  reset_severity(EventStatus::kDidNothing);
   sys[3]->set_discrete_severity(EventStatus::kSucceeded);
   unrestricted_status = diagram->CalcUnrestrictedUpdate(
       *context, diagram->get_forced_unrestricted_update_events(), &state);
+  EXPECT_TRUE(unrestricted_status.did_nothing());
+  EXPECT_THAT(take_static_events(), ElementsAreArray(all_unrestricted));
   discrete_status = diagram->CalcDiscreteVariableUpdate(
       *context, diagram->get_forced_discrete_update_events(), &discrete_state);
+  EXPECT_TRUE(discrete_status.succeeded());
+  EXPECT_THAT(take_static_events(), ElementsAreArray(all_discrete));
   publish_status =
       diagram->Publish(*context, diagram->get_forced_publish_events());
-
-  EXPECT_TRUE(unrestricted_status.did_nothing());
-  EXPECT_TRUE(discrete_status.succeeded());
   EXPECT_TRUE(publish_status.did_nothing());
-
-  for (int i = 0; i < 5; ++i) {
-    const auto& system = *sys[i];
-    system.check_counts({1, 1, 1});
-    system.check_order({i, 5 + i, 10 + i});
-  }
-
-  // (We don't need to re-check ordering because it can't change due
-  // to status returns.)
+  EXPECT_THAT(take_static_events(), ElementsAreArray(all_publish));
 
   // Policy 4a: sys[1] unrestricted fails. Nothing after should execute.
-  clear();
+  reset_severity(EventStatus::kSucceeded);
   sys[1]->set_unrestricted_severity(EventStatus::kFailed);
   unrestricted_status = diagram->CalcUnrestrictedUpdate(
       *context, diagram->get_forced_unrestricted_update_events(), &state);
   EXPECT_TRUE(unrestricted_status.failed());
   EXPECT_EQ(unrestricted_status.system(), sys[1]);
   EXPECT_EQ(unrestricted_status.message(), "unrestricted failed");
-  for (int i=0; i < 2; ++i) sys[i]->check_counts({1, 0, 0});
-  for (int i=2; i < 5; ++i) sys[i]->check_counts({0, 0, 0});
+  EXPECT_THAT(take_static_events(),
+              ElementsAreArray(all_unrestricted, /* count = */ 2));
 
   // Policy 4b: sys[2] discrete fails. Nothing after should execute.
-  clear();
+  reset_severity(EventStatus::kSucceeded);
   sys[2]->set_discrete_severity(EventStatus::kFailed);
   discrete_status = diagram->CalcDiscreteVariableUpdate(
       *context, diagram->get_forced_discrete_update_events(), &discrete_state);
   EXPECT_TRUE(discrete_status.failed());
   EXPECT_EQ(discrete_status.system(), sys[2]);
   EXPECT_EQ(discrete_status.message(), "discrete failed");
-  for (int i=0; i < 3; ++i) sys[i]->check_counts({0, 1, 0});
-  for (int i=3; i < 5; ++i) sys[i]->check_counts({0, 0, 0});
+  EXPECT_THAT(take_static_events(),
+              ElementsAreArray(all_discrete, /* count = */ 3));
 
   // Policy 5: sys[0] publish fails. All other publishes should execute
   // but then the returned status is the sys[0] failure.
-  clear();
+  reset_severity(EventStatus::kSucceeded);
   sys[0]->set_publish_severity(EventStatus::kFailed);
   publish_status =
       diagram->Publish(*context, diagram->get_forced_publish_events());
   EXPECT_TRUE(publish_status.failed());
   EXPECT_EQ(publish_status.system(), sys[0]);
   EXPECT_EQ(publish_status.message(), "publish failed");
-  for (int i=0; i < 5; ++i) sys[i]->check_counts({0, 0, 1});
+  EXPECT_THAT(take_static_events(), ElementsAreArray(all_publish));
 
   // Policy 6a: sys[1] unrestricted and sys[3] unrestricted report termination.
   // Everything executes and the sys[1] termination return is reported.
-  clear();
+  reset_severity(EventStatus::kSucceeded);
   sys[1]->set_unrestricted_severity(EventStatus::kReachedTermination);
   sys[3]->set_unrestricted_severity(EventStatus::kReachedTermination);
   unrestricted_status = diagram->CalcUnrestrictedUpdate(
@@ -3576,11 +3546,11 @@ GTEST_TEST(DiagramEventEvaluation, EventStatusHandling) {
   EXPECT_TRUE(unrestricted_status.reached_termination());
   EXPECT_EQ(unrestricted_status.system(), sys[1]);
   EXPECT_EQ(unrestricted_status.message(), "unrestricted terminated");
-  for (int i=0; i < 5; ++i) sys[i]->check_counts({1, 0, 0});
+  EXPECT_THAT(take_static_events(), ElementsAreArray(all_unrestricted));
 
   // Policy 6b: sys[1] discrete reports termination, sys[3] fails.
   // sys[4] is not executed, and the sys[3] failure is reported.
-  clear();
+  reset_severity(EventStatus::kSucceeded);
   sys[1]->set_discrete_severity(EventStatus::kReachedTermination);
   sys[3]->set_discrete_severity(EventStatus::kFailed);
   discrete_status = diagram->CalcDiscreteVariableUpdate(
@@ -3588,8 +3558,8 @@ GTEST_TEST(DiagramEventEvaluation, EventStatusHandling) {
   EXPECT_TRUE(discrete_status.failed());
   EXPECT_EQ(discrete_status.system(), sys[3]);
   EXPECT_EQ(discrete_status.message(), "discrete failed");
-  for (int i=0; i < 4; ++i) sys[i]->check_counts({0, 1, 0});
-  sys[4]->check_counts({0, 0, 0});
+  EXPECT_THAT(take_static_events(),
+              ElementsAreArray(all_discrete, /* count = */ 4));
 }
 
 class MyEventTestSystem : public LeafSystem<double> {
