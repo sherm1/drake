@@ -1441,27 +1441,6 @@ class System : public SystemBase {
       Event<T>* event,
       CompositeEventCollection<T>* events) const = 0;
 
-  /** (Internal use only) */
-  const EventCollection<PublishEvent<T>>&
-  get_forced_publish_events() const {
-    DRAKE_DEMAND(forced_publish_events_ != nullptr);
-    return *forced_publish_events_;
-  }
-
-  /** (Internal use only) */
-  const EventCollection<DiscreteUpdateEvent<T>>&
-  get_forced_discrete_update_events() const {
-    DRAKE_DEMAND(forced_discrete_update_events_ != nullptr);
-    return *forced_discrete_update_events_;
-  }
-
-  /** (Internal use only) */
-  const EventCollection<UnrestrictedUpdateEvent<T>>&
-  get_forced_unrestricted_update_events() const {
-    DRAKE_DEMAND(forced_unrestricted_update_events_ != nullptr);
-    return *forced_unrestricted_update_events_;
-  }
-
   // Promote these frequently-used methods so users (and tutorial examples)
   // don't need "this->" everywhere when in templated derived classes.
   // All pre-defined ticket methods should be listed here. They are ordered as
@@ -1900,6 +1879,27 @@ class System : public SystemBase {
 
   EventCollection<UnrestrictedUpdateEvent<T>>&
   get_mutable_forced_unrestricted_update_events() {
+    DRAKE_DEMAND(forced_unrestricted_update_events_ != nullptr);
+    return *forced_unrestricted_update_events_;
+  }
+
+  /** (Internal use only) */
+  const EventCollection<PublishEvent<T>>&
+  get_forced_publish_events() const {
+    DRAKE_DEMAND(forced_publish_events_ != nullptr);
+    return *forced_publish_events_;
+  }
+
+  /** (Internal use only) */
+  const EventCollection<DiscreteUpdateEvent<T>>&
+  get_forced_discrete_update_events() const {
+    DRAKE_DEMAND(forced_discrete_update_events_ != nullptr);
+    return *forced_discrete_update_events_;
+  }
+
+  /** (Internal use only) */
+  const EventCollection<UnrestrictedUpdateEvent<T>>&
+  get_forced_unrestricted_update_events() const {
     DRAKE_DEMAND(forced_unrestricted_update_events_ != nullptr);
     return *forced_unrestricted_update_events_;
   }

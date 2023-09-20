@@ -3448,6 +3448,20 @@ GTEST_TEST(DiagramEventEvaluation, EventStatusHandling) {
   auto context = diagram->CreateDefaultContext();
   State<double>& state = context->get_mutable_state();
   DiscreteValues<double>& discrete_state = state.get_mutable_discrete_state();
+  auto calc_unrestricted_update = [&context, &state](const auto& dut) {
+    return dut->CalcUnrestrictedUpdate(
+        *context, *dut->AllocateForcedUnrestrictedUpdateEventCollection(),
+        &state);
+  };
+  auto calc_discrete_variable_update = [&context,
+                                        &discrete_state](const auto& dut) {
+    return dut->CalcDiscreteVariableUpdate(
+        *context, *dut->AllocateForcedDiscreteUpdateEventCollection(),
+        &discrete_state);
+  };
+  auto publish = [&context](const auto& dut) {
+    return dut->Publish(*context, *dut->AllocateForcedPublishEventCollection());
+  };
 
   // The event logs should have these strings, when everything succeeds.
   const std::string all_unrestricted[] = {
@@ -3471,16 +3485,13 @@ GTEST_TEST(DiagramEventEvaluation, EventStatusHandling) {
   auto take_static_events = &EventStatusTestSystem::take_static_events;
 
   // Policy 1 & 2: Every handler returns success and should be invoked in order.
-  EventStatus unrestricted_status = diagram->CalcUnrestrictedUpdate(
-      *context, diagram->get_forced_unrestricted_update_events(), &state);
+  EventStatus unrestricted_status = calc_unrestricted_update(diagram);
   EXPECT_TRUE(unrestricted_status.succeeded());
   EXPECT_THAT(take_static_events(), ElementsAreArray(all_unrestricted));
-  EventStatus discrete_status = diagram->CalcDiscreteVariableUpdate(
-      *context, diagram->get_forced_discrete_update_events(), &discrete_state);
+  EventStatus discrete_status = calc_discrete_variable_update(diagram);
   EXPECT_TRUE(discrete_status.succeeded());
   EXPECT_THAT(take_static_events(), ElementsAreArray(all_discrete));
-  EventStatus publish_status =
-      diagram->Publish(*context, diagram->get_forced_publish_events());
+  EventStatus publish_status = publish(diagram);
   EXPECT_TRUE(publish_status.succeeded());
   EXPECT_THAT(take_static_events(), ElementsAreArray(all_publish));
 
@@ -3490,24 +3501,20 @@ GTEST_TEST(DiagramEventEvaluation, EventStatusHandling) {
   // above.
   reset_severity(EventStatus::kDidNothing);
   sys[3]->set_discrete_severity(EventStatus::kSucceeded);
-  unrestricted_status = diagram->CalcUnrestrictedUpdate(
-      *context, diagram->get_forced_unrestricted_update_events(), &state);
+  unrestricted_status = calc_unrestricted_update(diagram);
   EXPECT_TRUE(unrestricted_status.did_nothing());
   EXPECT_THAT(take_static_events(), ElementsAreArray(all_unrestricted));
-  discrete_status = diagram->CalcDiscreteVariableUpdate(
-      *context, diagram->get_forced_discrete_update_events(), &discrete_state);
+  discrete_status = calc_discrete_variable_update(diagram);
   EXPECT_TRUE(discrete_status.succeeded());
   EXPECT_THAT(take_static_events(), ElementsAreArray(all_discrete));
-  publish_status =
-      diagram->Publish(*context, diagram->get_forced_publish_events());
+  publish_status = publish(diagram);
   EXPECT_TRUE(publish_status.did_nothing());
   EXPECT_THAT(take_static_events(), ElementsAreArray(all_publish));
 
   // Policy 4a: sys[1] unrestricted fails. Nothing after should execute.
   reset_severity(EventStatus::kSucceeded);
   sys[1]->set_unrestricted_severity(EventStatus::kFailed);
-  unrestricted_status = diagram->CalcUnrestrictedUpdate(
-      *context, diagram->get_forced_unrestricted_update_events(), &state);
+  unrestricted_status = calc_unrestricted_update(diagram);
   EXPECT_TRUE(unrestricted_status.failed());
   EXPECT_EQ(unrestricted_status.system(), sys[1]);
   EXPECT_EQ(unrestricted_status.message(), "unrestricted failed");
@@ -3517,8 +3524,7 @@ GTEST_TEST(DiagramEventEvaluation, EventStatusHandling) {
   // Policy 4b: sys[2] discrete fails. Nothing after should execute.
   reset_severity(EventStatus::kSucceeded);
   sys[2]->set_discrete_severity(EventStatus::kFailed);
-  discrete_status = diagram->CalcDiscreteVariableUpdate(
-      *context, diagram->get_forced_discrete_update_events(), &discrete_state);
+  discrete_status = calc_discrete_variable_update(diagram);
   EXPECT_TRUE(discrete_status.failed());
   EXPECT_EQ(discrete_status.system(), sys[2]);
   EXPECT_EQ(discrete_status.message(), "discrete failed");
@@ -3529,8 +3535,7 @@ GTEST_TEST(DiagramEventEvaluation, EventStatusHandling) {
   // but then the returned status is the sys[0] failure.
   reset_severity(EventStatus::kSucceeded);
   sys[0]->set_publish_severity(EventStatus::kFailed);
-  publish_status =
-      diagram->Publish(*context, diagram->get_forced_publish_events());
+  publish_status = publish(diagram);
   EXPECT_TRUE(publish_status.failed());
   EXPECT_EQ(publish_status.system(), sys[0]);
   EXPECT_EQ(publish_status.message(), "publish failed");
@@ -3541,8 +3546,7 @@ GTEST_TEST(DiagramEventEvaluation, EventStatusHandling) {
   reset_severity(EventStatus::kSucceeded);
   sys[1]->set_unrestricted_severity(EventStatus::kReachedTermination);
   sys[3]->set_unrestricted_severity(EventStatus::kReachedTermination);
-  unrestricted_status = diagram->CalcUnrestrictedUpdate(
-      *context, diagram->get_forced_unrestricted_update_events(), &state);
+  unrestricted_status = calc_unrestricted_update(diagram);
   EXPECT_TRUE(unrestricted_status.reached_termination());
   EXPECT_EQ(unrestricted_status.system(), sys[1]);
   EXPECT_EQ(unrestricted_status.message(), "unrestricted terminated");
@@ -3553,8 +3557,7 @@ GTEST_TEST(DiagramEventEvaluation, EventStatusHandling) {
   reset_severity(EventStatus::kSucceeded);
   sys[1]->set_discrete_severity(EventStatus::kReachedTermination);
   sys[3]->set_discrete_severity(EventStatus::kFailed);
-  discrete_status = diagram->CalcDiscreteVariableUpdate(
-      *context, diagram->get_forced_discrete_update_events(), &discrete_state);
+  discrete_status = calc_discrete_variable_update(diagram);
   EXPECT_TRUE(discrete_status.failed());
   EXPECT_EQ(discrete_status.system(), sys[3]);
   EXPECT_EQ(discrete_status.message(), "discrete failed");
