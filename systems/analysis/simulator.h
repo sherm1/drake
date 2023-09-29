@@ -562,7 +562,7 @@ class Simulator {
   /// @see LeafSystem::DeclareInitializationPublishEvent()
   /// @see LeafSystem::DeclarePerStepPublishEvent()
   /// @see LeafSystem::DeclareForcedPublishEvent()
- void set_publish_at_initialization(bool publish) {
+  void set_publish_at_initialization(bool publish) {
     publish_at_initialization_ = publish;
   }
 
