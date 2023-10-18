@@ -1,11 +1,10 @@
-#include "drake/multibody/topology/link_joint_graph.h"
-
 #include <string>
 
 #include <fmt/format.h>
 #include <gtest/gtest.h>
 
 #include "drake/common/test_utilities/expect_throws_message.h"
+#include "drake/multibody/topology/graph.h"
 #include "drake/multibody/topology/spanning_forest.h"
 
 namespace drake {

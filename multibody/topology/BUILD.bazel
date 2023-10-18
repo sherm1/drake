@@ -14,10 +14,14 @@ drake_cc_library(
     name = "multibody_topology",
     srcs = [
         "link_joint_graph.cc",
+        "link_joint_graph_link.cc",
         "spanning_forest.cc",
     ],
     hdrs = [
+        "graph.h",
         "link_joint_graph.h",
+        "link_joint_graph_defs.h",
+        "link_joint_graph_link.h",
         "spanning_forest.h",
     ],
     deps = [
