@@ -56,7 +56,7 @@ class FixedOffsetFrame final : public Frame<T> {
       std::optional<ModelInstanceIndex> model_instance = {});
 
   /// Creates a material Frame F whose pose is fixed with respect to the
-  /// BodyFrame B of the given Body, which serves as F's parent frame.
+  /// BodyFrame B of the given Link, which serves as F's parent frame.
   /// The pose is given by a spatial transform `X_BF`; see class documentation
   /// for more information.
   ///
@@ -64,7 +64,7 @@ class FixedOffsetFrame final : public Frame<T> {
   /// @param[in] bodyB The body whose BodyFrame B is to be F's parent frame.
   /// @param[in] X_BF  The transform giving the pose of F in B.
   FixedOffsetFrame(
-      const std::string& name, const Body<T>& bodyB,
+      const std::string& name, const Link<T>& bodyB,
       const math::RigidTransform<double>& X_BF);
 
   math::RigidTransform<T> CalcPoseInBodyFrame(

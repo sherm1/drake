@@ -21,22 +21,22 @@ std::string DeprecateWhenEmptyName(std::string name, std::string_view type);
 }  // namespace internal
 
 // Forward declarations.
-template<typename T> class Body;
+template<typename T> class Link;
 
 /// %Frame is an abstract class representing a _material frame_ (also called a
 /// _physical frame_), meaning that the %Frame's origin is a material point of
-/// a Body.
+/// a Link.
 ///
 /// An important characteristic of a %Frame is that forces or torques applied
-/// to a %Frame are applied to the %Frame's underlying Body. Force-producing
+/// to a %Frame are applied to the %Frame's underlying Link. Force-producing
 /// elements like joints, actuators, and constraints usually employ two %Frames,
 /// with one %Frame connected to one body and the other connected to a different
-/// Body. Every %Frame object can report the Body to which it is attached.
+/// Link. Every %Frame object can report the Link to which it is attached.
 /// Despite its name, %Frame is not the most general frame in Drake
 /// (see FrameBase for more information).
 ///
 /// A %Frame's pose in World (or relative to other frames) is always calculated
-/// starting with its pose relative to its underlying %Body's BodyFrame.
+/// starting with its pose relative to its underlying Link's BodyFrame.
 /// Subclasses derived from %Frame differ in how kinematic calculations are
 /// performed. For example, the angular velocity of a FixedOffsetFrame or
 /// BodyFrame is identical to the angular velocity of its underlying body,
@@ -56,8 +56,8 @@ class Frame : public FrameBase<T> {
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(Frame)
 
   /// Returns a const reference to the body associated to this %Frame.
-  const Body<T>& body() const {
-    return body_;
+  const Link<T>& body() const {
+    return link_;
   }
 
   /// Returns true if `this` is the world frame.
@@ -67,7 +67,7 @@ class Frame : public FrameBase<T> {
 
   /// Returns true if `this` is the body frame.
   bool is_body_frame() const {
-    return this->index() == body_.body_frame().index();
+    return this->index() == link_.body_frame().index();
   }
 
   /// Returns the name of this frame. The name will never be empty.
@@ -172,7 +172,7 @@ class Frame : public FrameBase<T> {
 
   /// Computes and returns the pose `X_WF` of `this` frame F in the world
   /// frame W as a function of the state of the model stored in `context`.
-  /// @note Body::EvalPoseInWorld() provides a more efficient way to obtain
+  /// @note Link::EvalPoseInWorld() provides a more efficient way to obtain
   /// the pose for a body frame.
   math::RigidTransform<T> CalcPoseInWorld(
       const systems::Context<T>& context) const {
@@ -262,7 +262,7 @@ class Frame : public FrameBase<T> {
   /// ω_WF_W (frame F's angular velocity ω measured and expressed in the world
   /// frame W). The translational part is v_WFo_W (translational velocity v of
   /// frame F's origin point Fo, measured and expressed in the world frame W).
-  /// @note Body::EvalSpatialVelocityInWorld() provides a more efficient way to
+  /// @note Link::EvalSpatialVelocityInWorld() provides a more efficient way to
   /// obtain a body frame's spatial velocity measured in the world frame.
   /// @see CalcSpatialVelocity(), CalcRelativeSpatialVelocityInWorld(), and
   /// CalcSpatialAccelerationInWorld().
@@ -396,7 +396,7 @@ class Frame : public FrameBase<T> {
   /// expressed in the world frame W).  The translational part is a_WFo_W
   /// (translational acceleration of frame F's origin point Fo, measured and
   /// expressed in the world frame W).
-  /// @note Body::EvalSpatialAccelerationInWorld() provides a more efficient way
+  /// @note Link::EvalSpatialAccelerationInWorld() provides a more efficient way
   /// to obtain a body frame's spatial acceleration measured in the world frame.
   /// @note When cached values are out of sync with the state stored in context,
   /// this method performs an expensive forward dynamics computation, whereas
@@ -595,11 +595,11 @@ class Frame : public FrameBase<T> {
   /// object attached to `body` and puts the frame in the body's model
   /// instance.
   explicit Frame(
-      const std::string& name, const Body<T>& body,
+      const std::string& name, const Link<T>& body,
       std::optional<ModelInstanceIndex> model_instance = {})
       : FrameBase<T>(model_instance.value_or(body.model_instance())),
         name_(internal::DeprecateWhenEmptyName(name, "Frame")),
-        body_(body) {}
+        link_(body) {}
 
   /// Called by DoDeclareParameters(). Derived classes may choose to override
   /// to declare their sub-class specific parameters.
@@ -655,7 +655,7 @@ class Frame : public FrameBase<T> {
   const std::string name_;
 
   // The body associated with this frame.
-  const Body<T>& body_;
+  const Link<T>& link_;
 
   // The internal bookkeeping topology struct used by MultibodyTree.
   internal::FrameTopology topology_;

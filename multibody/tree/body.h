@@ -27,28 +27,28 @@ namespace multibody {
 /// @endcond
 
 // Forward declaration for BodyFrame<T>.
-template<typename T> class Body;
+template<typename T> class Link;
 
 /// A %BodyFrame is a material Frame that serves as the unique reference frame
-/// for a Body.
+/// for a Link.
 ///
-/// Each Body B, has a unique body frame for which we use the same symbol B
+/// Each Link B, has a unique body frame for which we use the same symbol B
 /// (with meaning clear from context). All properties of a body are defined with
 /// respect to its body frame, including its mass properties and attachment
 /// locations for joints, constraints, actuators, geometry and so on. Run time
 /// motion of the body is defined with respect to the motion of its body frame.
 /// We represent a body frame by a %BodyFrame object that is created whenever a
-/// Body is constructed and is owned by the Body.
+/// Link is constructed and is owned by the Link.
 ///
 /// Note that the %BodyFrame associated with a body does not necessarily need to
 /// be located at its center of mass nor does it need to be aligned with the
 /// body's principal axes, although, in practice, it frequently is.
 ///
-/// A %BodyFrame and Body are tightly coupled concepts; neither makes sense
+/// A %BodyFrame and Link are tightly coupled concepts; neither makes sense
 /// without the other. Therefore, a %BodyFrame instance is constructed in
-/// conjunction with its Body and cannot be constructed anywhere else. However,
+/// conjunction with its Link and cannot be constructed anywhere else. However,
 /// you can still access the frame associated with a body, see
-/// Body::body_frame(). This access is more than a convenience; you can use the
+/// Link::body_frame(). This access is more than a convenience; you can use the
 /// %BodyFrame to define other frames on the body and to attach other multibody
 /// elements to it.
 ///
@@ -110,19 +110,19 @@ class BodyFrame final : public Frame<T> {
       const internal::MultibodyTree<symbolic::Expression>&) const override;
 
  private:
-  // Body<T> and BodyFrame<T> are natural allies. A BodyFrame object is created
-  // every time a Body object is created and they are associated with each
+  // Link<T> and BodyFrame<T> are natural allies. A BodyFrame object is created
+  // every time a Link object is created and they are associated with each
   // other.
-  friend class Body<T>;
+  friend class Link<T>;
 
   // Make BodyFrame templated on any other scalar type a friend of
   // BodyFrame<T> so that CloneToScalar<ToAnyOtherScalar>() can access
   // private methods from BodyFrame<T>.
   template <typename> friend class BodyFrame;
 
-  // Only Body objects can create BodyFrame objects since Body is a friend of
+  // Only Link objects can create BodyFrame objects since Link is a friend of
   // BodyFrame.
-  explicit BodyFrame(const Body<T>& body) : Frame<T>(body.name(), body) {}
+  explicit BodyFrame(const Link<T>& body) : Frame<T>(body.name(), body) {}
 
   // Helper method to make a clone templated on any other scalar type.
   // This method holds the common implementation for the different overrides to
@@ -138,8 +138,8 @@ class BodyFrame final : public Frame<T> {
 namespace internal {
 template <typename T>
 // Attorney-Client idiom to grant MultibodyTree access to a selected set of
-// private methods in Body.
-// BodyAttorney serves as a "proxy" to the Body class but only providing an
+// private methods in Link.
+// BodyAttorney serves as a "proxy" to the Link class but only providing an
 // interface to a selected subset of methods that should be accessible to
 // MultibodyTree. These methods are related to the construction and finalize
 // stage of the multibody system.
@@ -150,7 +150,7 @@ class BodyAttorney {
   // Notice this method is private and therefore users do not have access to it
   // even in the rare event they'd attempt to peek into the "internal::"
   // namespace.
-  static BodyFrame<T>& get_mutable_body_frame(Body<T>* body) {
+  static BodyFrame<T>& get_mutable_body_frame(Link<T>* body) {
     return body->get_mutable_body_frame();
   }
   friend class internal::MultibodyTree<T>;
@@ -158,7 +158,7 @@ class BodyAttorney {
 }  // namespace internal
 /// @endcond
 
-/// %Body provides the general abstraction of a body with an API that
+/// %Link provides the general abstraction of a body with an API that
 /// makes no assumption about whether a body is rigid or deformable and neither
 /// does it make any assumptions about the underlying physical model or
 /// approximation.
@@ -166,14 +166,14 @@ class BodyAttorney {
 /// MultibodyElement, and therefore it has a unique index of type LinkIndex
 /// within the multibody plant it belongs to.
 ///
-/// A %Body contains a unique BodyFrame; see BodyFrame class documentation for
+/// A %Link contains a unique BodyFrame; see BodyFrame class documentation for
 /// more information.
 ///
 /// @tparam_default_scalar
 template <typename T>
-class Body : public MultibodyElement<T> {
+class Link : public MultibodyElement<T> {
  public:
-  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(Body)
+  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(Link)
 
   /// Returns this element's unique index.
   LinkIndex index() const { return this->template index_impl<LinkIndex>(); }
@@ -219,8 +219,8 @@ class Body : public MultibodyElement<T> {
         .Unlock(context);
   }
 
-  /// Determines whether this %Body is currently locked to its inboard (parent)
-  /// %Body. This is not limited to floating bodies but generally
+  /// Determines whether this %Link is currently locked to its inboard (parent)
+  /// %Link. This is not limited to floating bodies but generally
   /// Joint::is_locked() is preferable otherwise.
   /// @returns true if the body is locked, false otherwise.
   bool is_locked(const systems::Context<T>& context) const {
@@ -231,7 +231,7 @@ class Body : public MultibodyElement<T> {
 
   /// (Advanced) Returns the index of the mobilized body ("mobod") in the
   /// computational directed forest structure of the owning MultibodyTree to
-  /// which this %Body belongs. This serves as the BodyNode index and the index
+  /// which this %Link belongs. This serves as the BodyNode index and the index
   /// into all associated quantities.
   internal::MobodIndex mobod_index() const {
     return topology_.mobod_index;
@@ -264,12 +264,12 @@ class Body : public MultibodyElement<T> {
   }
 
   /// (Advanced) For floating bodies (see is_floating()) this method returns the
-  /// index of this %Body's first generalized position in the vector q of
+  /// index of this %Link's first generalized position in the vector q of
   /// generalized position coordinates for a MultibodyPlant model.
-  /// Positions q for this %Body are then contiguous starting at this index.
-  /// When a floating %Body is modeled with quaternion coordinates (see
+  /// Positions q for this %Link are then contiguous starting at this index.
+  /// When a floating %Link is modeled with quaternion coordinates (see
   /// has_quaternion_dofs()), the four consecutive entries in the state starting
-  /// at this index correspond to the quaternion that parametrizes this %Body's
+  /// at this index correspond to the quaternion that parametrizes this %Link's
   /// orientation.
   /// @throws std::exception if called pre-finalize
   /// @pre `this` is a floating body
@@ -281,7 +281,7 @@ class Body : public MultibodyElement<T> {
   }
 
   /// (Advanced, Deprecated) For floating bodies (see is_floating()) this
-  /// method returns the index of this %Body's first generalized velocity in the
+  /// method returns the index of this %Link's first generalized velocity in the
   /// _full state vector_ for a MultibodyPlant model, under the dubious
   /// assumption that the state consists of [q v] concatenated.
   /// Velocities for this body are then contiguous starting at this index.
@@ -300,9 +300,9 @@ class Body : public MultibodyElement<T> {
   }
 
   /// (Advanced) For floating bodies (see is_floating()) this method returns the
-  /// index of this %Body's first generalized velocity in the vector v of
+  /// index of this %Link's first generalized velocity in the vector v of
   /// generalized velocities for a MultibodyPlant model.
-  /// Velocities v for this %Body are then contiguous starting at this index.
+  /// Velocities v for this %Link are then contiguous starting at this index.
   /// @throws std::exception if called pre-finalize
   /// @pre `this` is a floating body
   /// @see is_floating(), MultibodyPlant::Finalize()
@@ -466,17 +466,17 @@ class Body : public MultibodyElement<T> {
   /// needed.
   /// @sa MultibodyTree::CloneToScalar()
   template <typename ToScalar>
-  std::unique_ptr<Body<ToScalar>> CloneToScalar(
+  std::unique_ptr<Link<ToScalar>> CloneToScalar(
   const internal::MultibodyTree<ToScalar>& tree_clone) const {
     return DoCloneToScalar(tree_clone);
   }
 
  protected:
-  /// Creates a %Body named `name` in model instance `model_instance`.
+  /// Creates a %Link named `name` in model instance `model_instance`.
   /// The `name` must not be empty.
-  Body(const std::string& name, ModelInstanceIndex model_instance)
+  Link(const std::string& name, ModelInstanceIndex model_instance)
       : MultibodyElement<T>(model_instance),
-        name_(internal::DeprecateWhenEmptyName(name, "Body")),
+        name_(internal::DeprecateWhenEmptyName(name, "Link")),
         body_frame_(*this) {}
 
   /// Called by DoDeclareParameters(). Derived classes may choose to override
@@ -492,7 +492,7 @@ class Body : public MultibodyElement<T> {
   /// These methods are meant to be called by MultibodyTree::CloneToScalar()
   /// when making a clone of the entire tree or a new instance templated on a
   /// different scalar type. The only const argument to these methods is the
-  /// new MultibodyTree clone under construction. Specific %Body subclasses
+  /// new MultibodyTree clone under construction. Specific %Link subclasses
   /// might specify a number of prerequisites on the cloned tree and therefore
   /// require it to be at a given state of cloning (for instance requiring that
   /// the cloned tree already contains all the frames in the world as in the
@@ -502,23 +502,23 @@ class Body : public MultibodyElement<T> {
   ///
   /// @{
 
-  /// Clones this %Body (templated on T) to a body templated on `double`.
-  virtual std::unique_ptr<Body<double>> DoCloneToScalar(
+  /// Clones this %Link (templated on T) to a body templated on `double`.
+  virtual std::unique_ptr<Link<double>> DoCloneToScalar(
       const internal::MultibodyTree<double>& tree_clone) const = 0;
 
-  /// Clones this %Body (templated on T) to a body templated on AutoDiffXd.
-  virtual std::unique_ptr<Body<AutoDiffXd>> DoCloneToScalar(
+  /// Clones this %Link (templated on T) to a body templated on AutoDiffXd.
+  virtual std::unique_ptr<Link<AutoDiffXd>> DoCloneToScalar(
       const internal::MultibodyTree<AutoDiffXd>& tree_clone) const = 0;
 
-  /// Clones this %Body (templated on T) to a body templated on Expression.
-  virtual std::unique_ptr<Body<symbolic::Expression>> DoCloneToScalar(
+  /// Clones this %Link (templated on T) to a body templated on Expression.
+  virtual std::unique_ptr<Link<symbolic::Expression>> DoCloneToScalar(
       const internal::MultibodyTree<symbolic::Expression>&) const = 0;
 
   /// @}
 
  private:
   // Only friends of BodyAttorney (i.e. MultibodyTree) have access to a selected
-  // set of private Body methods.
+  // set of private Link methods.
   friend class internal::BodyAttorney<T>;
 
   // Helper method for throwing an exception within public methods that should
@@ -563,12 +563,17 @@ class Body : public MultibodyElement<T> {
   // unique by MultibodyPlant's API.
   const std::string name_;
 
-  // Body frame associated with this body.
+  // Link frame associated with this body.
   BodyFrame<T> body_frame_;
 
   // The internal bookkeeping topology struct used by MultibodyTree.
   internal::BodyTopology topology_;
 };
+
+/// Synonym for Link; prefer Link. This exists for backwards
+/// compatibility with earlier terminology.
+template <typename T>
+using Body = Link<T>;
 
 /// @cond
 // Undef macros defined at the top of the file. From the GSG:

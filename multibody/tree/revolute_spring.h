@@ -11,8 +11,7 @@
 namespace drake {
 namespace multibody {
 
-template <typename T>
-class Body;
+template <typename T> class Link;
 
 /// This %ForceElement models a torsional spring attached to a RevoluteJoint
 /// and applies a torque to that joint

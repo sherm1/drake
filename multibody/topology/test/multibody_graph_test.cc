@@ -15,10 +15,10 @@ const char kRevoluteType[] = "revolute";
 const char kPrismaticType[] = "prismatic";
 
 // Arbitrary world name for testing.
-const char kWorldBodyName[] = "DefaultWorldBodyName";
+const char kWorldLinkName[] = "DefaultWorldLinkName";
 
-// Test a straightforward serial chain of bodies connected by
-// revolute joints: world->body1->body2->body3->body4->body5.
+// Test a straightforward serial chain of links connected by
+// revolute joints: world->link1->link2->link3->link4->link5.
 // We perform a number of sanity checks on the provided API.
 GTEST_TEST(MultibodyGraph, SerialChain) {
   MultibodyGraph graph;
@@ -30,98 +30,98 @@ GTEST_TEST(MultibodyGraph, SerialChain) {
   EXPECT_TRUE(graph.IsJointTypeRegistered(kRevoluteType));
   EXPECT_FALSE(graph.IsJointTypeRegistered(kPrismaticType));
 
-  // The first body added defines the world's name and model instance.
+  // The first link added defines the world's name and model instance.
   // We'll verify their values below.
-  graph.AddBody(kWorldBodyName, world_model_instance());
+  graph.AddLink(kWorldLinkName, world_model_instance());
 
   // We'll add the chain to this model.
   const ModelInstanceIndex model_instance(5);
 
   // We cannot register to the world model instance, unless it's the first call
-  // to AddBody().
+  // to AddLink().
   DRAKE_EXPECT_THROWS_MESSAGE(
-      graph.AddBody("InvalidBody", world_model_instance()),
-      fmt::format("AddBody\\(\\): Model instance index = {}.*",
+      graph.AddLink("InvalidLink", world_model_instance()),
+      fmt::format("AddLink\\(\\): Model instance index = {}.*",
                   world_model_instance()));
 
-  BodyIndex parent = graph.AddBody("body1", model_instance);
+  LinkIndex parent = graph.AddLink("link1", model_instance);
   graph.AddJoint("pin1", model_instance, kRevoluteType, world_index(), parent);
   for (int i = 2; i <= 5; ++i) {
-    BodyIndex child = graph.AddBody("body" + std::to_string(i), model_instance);
+    LinkIndex child = graph.AddLink("link" + std::to_string(i), model_instance);
     graph.AddJoint("pin" + std::to_string(i), model_instance, kRevoluteType,
                    parent, child);
     parent = child;
   }
 
-  // We cannot duplicate the name of a body or joint.
-  DRAKE_EXPECT_THROWS_MESSAGE(graph.AddBody("body3", model_instance),
-                              "AddBody\\(\\): Duplicate body name.*");
+  // We cannot duplicate the name of a link or joint.
+  DRAKE_EXPECT_THROWS_MESSAGE(graph.AddLink("link3", model_instance),
+                              "AddLink\\(\\): Duplicate link name.*");
   DRAKE_EXPECT_THROWS_MESSAGE(
-      graph.AddJoint("pin3", model_instance, kRevoluteType, BodyIndex(1),
-                     BodyIndex(2)),
+      graph.AddJoint("pin3", model_instance, kRevoluteType, LinkIndex(1),
+                     LinkIndex(2)),
       "AddJoint\\(\\): Duplicate joint name.*");
 
   // We cannot add a redundant joint.
   DRAKE_EXPECT_THROWS_MESSAGE(
-      graph.AddJoint("other", model_instance, kRevoluteType, BodyIndex(1),
-                     BodyIndex(2)),
-      "This MultibodyGraph already has a joint 'pin2' connecting 'body1'"
-      " to 'body2'. Therefore adding joint 'other' connecting 'body1' to"
-      " 'body2' is not allowed.");
+      graph.AddJoint("other", model_instance, kRevoluteType, LinkIndex(1),
+                     LinkIndex(2)),
+      "This MultibodyGraph already has a joint 'pin2' connecting 'link1'"
+      " to 'link2'. Therefore adding joint 'other' connecting 'link1' to"
+      " 'link2' is not allowed.");
   DRAKE_EXPECT_THROWS_MESSAGE(
-      graph.AddJoint("reverse", model_instance, kRevoluteType, BodyIndex(2),
-                     BodyIndex(1)),
-      "This MultibodyGraph already has a joint 'pin2' connecting 'body1'"
-      " to 'body2'. Therefore adding joint 'reverse' connecting 'body2' to"
-      " 'body1' is not allowed.");
+      graph.AddJoint("reverse", model_instance, kRevoluteType, LinkIndex(2),
+                     LinkIndex(1)),
+      "This MultibodyGraph already has a joint 'pin2' connecting 'link1'"
+      " to 'link2'. Therefore adding joint 'reverse' connecting 'link2' to"
+      " 'link1' is not allowed.");
 
   // We cannot add an unregistered joint type.
   DRAKE_EXPECT_THROWS_MESSAGE(graph.AddJoint("screw1", model_instance, "screw",
-                                             BodyIndex(1), BodyIndex(2)),
+                                             LinkIndex(1), LinkIndex(2)),
                               "AddJoint\\(\\): Unrecognized type.*");
 
-  // Invalid parent/child body throws.
+  // Invalid parent/child link throws.
   DRAKE_EXPECT_THROWS_MESSAGE(
-      graph.AddJoint("another_pin", model_instance, kRevoluteType, BodyIndex(1),
-                     BodyIndex(9)),
-      "AddJoint\\(\\): child body index for joint '.*' is invalid.");
+      graph.AddJoint("another_pin", model_instance, kRevoluteType, LinkIndex(1),
+                     LinkIndex(9)),
+      "AddJoint\\(\\): child link index for joint '.*' is invalid.");
   DRAKE_EXPECT_THROWS_MESSAGE(
-      graph.AddJoint("another_pin", model_instance, kRevoluteType, BodyIndex(9),
-                     BodyIndex(1)),
-      "AddJoint\\(\\): parent body index for joint '.*' is invalid.");
+      graph.AddJoint("another_pin", model_instance, kRevoluteType, LinkIndex(9),
+                     LinkIndex(1)),
+      "AddJoint\\(\\): parent link index for joint '.*' is invalid.");
 
   // Verify the world's name and model instance are registered correctly.
-  EXPECT_EQ(graph.world_body_name(), kWorldBodyName);
-  EXPECT_EQ(graph.world_body().model_instance(), world_model_instance());
-  // Body "0" is always the world.
-  EXPECT_EQ(graph.get_body(BodyIndex(0)).name(), kWorldBodyName);
-  EXPECT_EQ(graph.get_body(BodyIndex(0)).model_instance(),
+  EXPECT_EQ(graph.world_link_name(), kWorldLinkName);
+  EXPECT_EQ(graph.world_link().model_instance(), world_model_instance());
+  // Link "0" is always the world.
+  EXPECT_EQ(graph.get_link(LinkIndex(0)).name(), kWorldLinkName);
+  EXPECT_EQ(graph.get_link(LinkIndex(0)).model_instance(),
             world_model_instance());
 
   // Sanity check sizes.
-  EXPECT_EQ(graph.num_bodies(), 6);  // this includes the world body.
+  EXPECT_EQ(graph.num_links(), 6);  // this includes the world link.
   EXPECT_EQ(graph.num_joints(), 5);
 
-  // Verify we can get bodies/joints.
-  EXPECT_EQ(graph.get_body(BodyIndex(3)).name(), "body3");
+  // Verify we can get links/joints.
+  EXPECT_EQ(graph.get_link(LinkIndex(3)).name(), "link3");
   EXPECT_EQ(graph.get_joint(JointIndex(3)).name(), "pin4");
-  DRAKE_EXPECT_THROWS_MESSAGE(graph.get_body(BodyIndex(9)),
-                              ".*index < num_bodies\\(\\).*");
+  DRAKE_EXPECT_THROWS_MESSAGE(graph.get_link(LinkIndex(9)),
+                              ".*index < num_links\\(\\).*");
   DRAKE_EXPECT_THROWS_MESSAGE(graph.get_joint(JointIndex(9)),
                               ".*index < num_joints\\(\\).*");
 
-  // Verify we can query if a body/joint is in the graph.
+  // Verify we can query if a link/joint is in the graph.
   const ModelInstanceIndex kInvalidModelInstance(666);
-  EXPECT_TRUE(graph.HasBodyNamed("body3", model_instance));
-  EXPECT_FALSE(graph.HasBodyNamed("body3", kInvalidModelInstance));
-  EXPECT_FALSE(graph.HasBodyNamed("invalid_body_name", model_instance));
+  EXPECT_TRUE(graph.HasLinkNamed("link3", model_instance));
+  EXPECT_FALSE(graph.HasLinkNamed("link3", kInvalidModelInstance));
+  EXPECT_FALSE(graph.HasLinkNamed("invalid_link_name", model_instance));
   EXPECT_TRUE(graph.HasJointNamed("pin3", model_instance));
   EXPECT_FALSE(graph.HasJointNamed("pin3", kInvalidModelInstance));
   EXPECT_FALSE(graph.HasJointNamed("invalid_joint_name", model_instance));
 }
 
 // We build a model containing a number of kinematic loops and subgraphs of
-// welded bodies.
+// welded links.
 //
 // subgraph A (forms closed loop):
 //  - WeldJoint(1, 13)
@@ -143,7 +143,7 @@ GTEST_TEST(MultibodyGraph, SerialChain) {
 //  - RevoluteJoint(7, 11)
 //
 // Additionally we have the following non-weld joints:
-//  - RevoluteJoint(3, 13): connects body 3 to subgraph A.
+//  - RevoluteJoint(3, 13): connects link 3 to subgraph A.
 //  - PrimaticJoint(1, 10): connects subgraph A and B.
 //
 // Therefore we expect the following subgraphs, in no particular order, but with
@@ -155,109 +155,109 @@ GTEST_TEST(MultibodyGraph, Weldedsubgraphs) {
   graph.RegisterJointType(kPrismaticType);
   EXPECT_EQ(graph.num_joint_types(), 3);  // weld, revolute and prismatic.
 
-  // The first body added defines the world's name and model instance.
-  graph.AddBody(kWorldBodyName, world_model_instance());
+  // The first link added defines the world's name and model instance.
+  graph.AddLink(kWorldLinkName, world_model_instance());
 
-  // We'll add bodies and joints to this model instance.
+  // We'll add links and joints to this model instance.
   const ModelInstanceIndex model_instance(5);
 
   // Define the model.
   for (int i = 1; i <= 13; ++i) {
-    graph.AddBody("body" + std::to_string(i), model_instance);
+    graph.AddLink("link" + std::to_string(i), model_instance);
   }
 
   // Add joints.
   int j = 0;
 
-  // subgraph A: formed by bodies 1, 4, 13.
+  // subgraph A: formed by links 1, 4, 13.
   graph.AddJoint("joint" + std::to_string(j++), model_instance,
-                 graph.weld_type_name(), BodyIndex(1), BodyIndex(13));
+                 graph.weld_type_name(), LinkIndex(1), LinkIndex(13));
   graph.AddJoint("joint" + std::to_string(j++), model_instance,
-                 graph.weld_type_name(), BodyIndex(4), BodyIndex(1));
+                 graph.weld_type_name(), LinkIndex(4), LinkIndex(1));
   graph.AddJoint("joint" + std::to_string(j++), model_instance,
-                 graph.weld_type_name(), BodyIndex(13), BodyIndex(4));
+                 graph.weld_type_name(), LinkIndex(13), LinkIndex(4));
 
-  // Body 3 connects to subgraph A via a revolute joint.
+  // Link 3 connects to subgraph A via a revolute joint.
   graph.AddJoint("joint" + std::to_string(j++), model_instance, kRevoluteType,
-                 BodyIndex(3), BodyIndex(13));
+                 LinkIndex(3), LinkIndex(13));
 
-  // subgraph B: formed by bodies 8, 6, 10.
+  // subgraph B: formed by links 8, 6, 10.
   graph.AddJoint("joint" + std::to_string(j++), model_instance,
-                 graph.weld_type_name(), BodyIndex(10), BodyIndex(6));
+                 graph.weld_type_name(), LinkIndex(10), LinkIndex(6));
   graph.AddJoint("joint" + std::to_string(j++), model_instance,
-                 graph.weld_type_name(), BodyIndex(10), BodyIndex(8));
+                 graph.weld_type_name(), LinkIndex(10), LinkIndex(8));
   graph.AddJoint("joint" + std::to_string(j++), model_instance,
-                 graph.weld_type_name(), BodyIndex(6), BodyIndex(8));
+                 graph.weld_type_name(), LinkIndex(6), LinkIndex(8));
 
-  // Body 1 (in subgraph A) and body 10 (in subgraph B) connect through a
+  // Link 1 (in subgraph A) and link 10 (in subgraph B) connect through a
   // prismatic joint.
   graph.AddJoint("joint" + std::to_string(j++), model_instance, kPrismaticType,
-                 BodyIndex(1), BodyIndex(10));
+                 LinkIndex(1), LinkIndex(10));
 
   // Closed kinematic loop of non-weld joints.
   graph.AddJoint("joint" + std::to_string(j++), model_instance, kPrismaticType,
-                 BodyIndex(2), BodyIndex(11));
+                 LinkIndex(2), LinkIndex(11));
   graph.AddJoint("joint" + std::to_string(j++), model_instance, kPrismaticType,
-                 BodyIndex(7), BodyIndex(2));
+                 LinkIndex(7), LinkIndex(2));
   graph.AddJoint("joint" + std::to_string(j++), model_instance, kRevoluteType,
-                 BodyIndex(7), BodyIndex(11));
+                 LinkIndex(7), LinkIndex(11));
 
-  // subgraph C: formed by bodies 5, 7, 12.
+  // subgraph C: formed by links 5, 7, 12.
   graph.AddJoint("joint" + std::to_string(j++), model_instance,
-                 graph.weld_type_name(), BodyIndex(5), BodyIndex(7));
+                 graph.weld_type_name(), LinkIndex(5), LinkIndex(7));
   graph.AddJoint("joint" + std::to_string(j++), model_instance,
-                 graph.weld_type_name(), BodyIndex(5), world_index());
+                 graph.weld_type_name(), LinkIndex(5), world_index());
   graph.AddJoint("joint" + std::to_string(j++), model_instance,
-                 graph.weld_type_name(), BodyIndex(12), BodyIndex(5));
+                 graph.weld_type_name(), LinkIndex(12), LinkIndex(5));
 
-  EXPECT_EQ(graph.num_bodies(), 14);  // this includes the world body.
+  EXPECT_EQ(graph.num_links(), 14);  // this includes the world link.
 
-  const std::vector<std::set<BodyIndex>> welded_subgraphs =
-      graph.FindSubgraphsOfWeldedBodies();
+  const std::vector<std::set<LinkIndex>> welded_subgraphs =
+      graph.FindSubgraphsOfWeldedLinks();
 
   // Verify number of expected subgraphs.
   EXPECT_EQ(welded_subgraphs.size(), 7);
 
   // The first subgraph must contain the world.
-  const std::set<BodyIndex> world_subgraph = welded_subgraphs[0];
+  const std::set<LinkIndex> world_subgraph = welded_subgraphs[0];
   EXPECT_EQ(world_subgraph.count(world_index()), 1);
 
   // Build the expected set of subgraphs.
-  std::set<std::set<BodyIndex>> expected_subgraphs;
+  std::set<std::set<LinkIndex>> expected_subgraphs;
   //   {0, 5, 7, 12}, {1, 4, 13}, {6, 8, 10}, {3}, {9}, {2}, {11}.
-  const std::set<BodyIndex>& expected_world_subgraph =
+  const std::set<LinkIndex>& expected_world_subgraph =
       *expected_subgraphs
-           .insert({BodyIndex(0), BodyIndex(5), BodyIndex(7), BodyIndex(12)})
+           .insert({LinkIndex(0), LinkIndex(5), LinkIndex(7), LinkIndex(12)})
            .first;
-  const std::set<BodyIndex>& expected_subgraphA =
-      *expected_subgraphs.insert({BodyIndex(1), BodyIndex(4), BodyIndex(13)})
+  const std::set<LinkIndex>& expected_subgraphA =
+      *expected_subgraphs.insert({LinkIndex(1), LinkIndex(4), LinkIndex(13)})
            .first;
-  const std::set<BodyIndex>& expected_subgraphB =
-      *expected_subgraphs.insert({BodyIndex(6), BodyIndex(8), BodyIndex(10)})
+  const std::set<LinkIndex>& expected_subgraphB =
+      *expected_subgraphs.insert({LinkIndex(6), LinkIndex(8), LinkIndex(10)})
            .first;
-  expected_subgraphs.insert({BodyIndex(3)});
-  expected_subgraphs.insert({BodyIndex(9)});
-  expected_subgraphs.insert({BodyIndex(2)});
-  expected_subgraphs.insert({BodyIndex(11)});
+  expected_subgraphs.insert({LinkIndex(3)});
+  expected_subgraphs.insert({LinkIndex(9)});
+  expected_subgraphs.insert({LinkIndex(2)});
+  expected_subgraphs.insert({LinkIndex(11)});
 
-  // We do expect the first subgraph to correspond to the set of bodies welded
+  // We do expect the first subgraph to correspond to the set of links welded
   // to the world.
   EXPECT_EQ(world_subgraph, expected_world_subgraph);
 
-  // In order to compare the computed list of welded bodies against the expected
+  // In order to compare the computed list of welded links against the expected
   // list, irrespective of the ordering in the computed list, we first convert
   // the computed subgraphs to a set.
-  const std::set<std::set<BodyIndex>> welded_subgraphs_set(
+  const std::set<std::set<LinkIndex>> welded_subgraphs_set(
       welded_subgraphs.begin(), welded_subgraphs.end());
   EXPECT_EQ(welded_subgraphs_set, expected_subgraphs);
 
-  // Verify we can query the list of bodies welded to a particular body.
-  EXPECT_EQ(graph.FindBodiesWeldedTo(BodyIndex(9)).size(), 1);
-  EXPECT_EQ(graph.FindBodiesWeldedTo(BodyIndex(11)).size(), 1);
-  EXPECT_EQ(graph.FindBodiesWeldedTo(BodyIndex(4)), expected_subgraphA);
-  EXPECT_EQ(graph.FindBodiesWeldedTo(BodyIndex(13)), expected_subgraphA);
-  EXPECT_EQ(graph.FindBodiesWeldedTo(BodyIndex(10)), expected_subgraphB);
-  EXPECT_EQ(graph.FindBodiesWeldedTo(BodyIndex(6)), expected_subgraphB);
+  // Verify we can query the list of links welded to a particular link.
+  EXPECT_EQ(graph.FindLinksWeldedTo(LinkIndex(9)).size(), 1);
+  EXPECT_EQ(graph.FindLinksWeldedTo(LinkIndex(11)).size(), 1);
+  EXPECT_EQ(graph.FindLinksWeldedTo(LinkIndex(4)), expected_subgraphA);
+  EXPECT_EQ(graph.FindLinksWeldedTo(LinkIndex(13)), expected_subgraphA);
+  EXPECT_EQ(graph.FindLinksWeldedTo(LinkIndex(10)), expected_subgraphB);
+  EXPECT_EQ(graph.FindLinksWeldedTo(LinkIndex(6)), expected_subgraphB);
 }
 
 }  // namespace internal

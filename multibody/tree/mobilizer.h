@@ -19,7 +19,7 @@ namespace drake {
 namespace multibody {
 
 // Forward declarations.
-template<typename T> class Body;
+template<typename T> class Link;
 
 namespace internal {
 
@@ -35,7 +35,7 @@ template<typename T> class BodyNode;
 // @code
 // MultibodyTree<double> model;
 // // ... Code here to setup quantities below as mass, com, X_BP, etc. ...
-// const Body<double>& pendulum =
+// const Link<double>& pendulum =
 //   model.AddBody<RigidBody>(SpatialInertia<double>(mass, com, unit_inertia));
 // // We will connect the pendulum body to the world frame using a
 // // RevoluteMobilizer. To do so we define a pin frame P rigidly attached to
@@ -315,13 +315,13 @@ class Mobilizer : public MultibodyElement<T> {
 
   // Returns a constant reference to the body associated with `this`
   // mobilizer's inboard frame.
-  const Body<T>& inboard_body() const {
+  const Link<T>& inboard_body() const {
     return inboard_frame().body();
   }
 
   // Returns a constant reference to the body associated with `this`
   // mobilizer's outboard frame.
-  const Body<T>& outboard_body() const {
+  const Link<T>& outboard_body() const {
     return outboard_frame().body();
   }
 
@@ -638,7 +638,7 @@ class Mobilizer : public MultibodyElement<T> {
   // For MultibodyTree internal use only.
   virtual std::unique_ptr<internal::BodyNode<T>> CreateBodyNode(
       const internal::BodyNode<T>* parent_node,
-      const Body<T>* body, const Mobilizer<T>* mobilizer) const = 0;
+      const Link<T>* body, const Mobilizer<T>* mobilizer) const = 0;
 
   // Lock the mobilizer. Its generalized velocities will be 0 until it is
   // unlocked.
