@@ -109,10 +109,10 @@ void MultibodyTreeSystem<T>::SetDefaultParameters(
         .SetDefaultParameters(parameters);
   }
   // Bodies.
-  for (BodyIndex body_index(0); body_index < tree_->num_bodies();
-       ++body_index) {
+  for (LinkIndex link_index(0); link_index < tree_->num_bodies();
+       ++link_index) {
     mutable_tree()
-        .get_mutable_body(body_index)
+        .get_mutable_body(link_index)
         .SetDefaultParameters(parameters);
   }
   // Frames.
@@ -163,9 +163,9 @@ void MultibodyTreeSystem<T>::DeclareMultibodyElementParameters() {
         .DeclareParameters(this);
   }
   // Bodies.
-  for (BodyIndex body_index(0); body_index < tree_->num_bodies();
-       ++body_index) {
-    mutable_tree().get_mutable_body(body_index).DeclareParameters(this);
+  for (LinkIndex link_index(0); link_index < tree_->num_bodies();
+       ++link_index) {
+    mutable_tree().get_mutable_body(link_index).DeclareParameters(this);
   }
   // Frames.
   for (FrameIndex frame_index(0); frame_index < tree_->num_frames();

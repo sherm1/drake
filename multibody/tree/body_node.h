@@ -1400,7 +1400,7 @@ class BodyNode : public MultibodyElement<T> {
   // For the root node, corresponding to the world body, this method returns an
   // invalid body index. Attempts to using invalid indexes leads to an exception
   // being thrown in Debug builds.
-  BodyIndex get_parent_body_index() const { return topology_.parent_body;}
+  LinkIndex get_parent_body_index() const { return topology_.parent_body;}
 
   // =========================================================================
   // Helpers to access the state.

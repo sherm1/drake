@@ -121,12 +121,12 @@ GTEST_TEST(MultibodyTree, BasicAPIToAddBodiesAndJoints) {
   // Body identifiers are unique and are assigned by MultibodyTree in increasing
   // order starting with index = 0 (world_index()) for the "world" body.
   EXPECT_EQ(world_body.index(), world_index());
-  EXPECT_EQ(pendulum.index(), BodyIndex(1));
-  EXPECT_EQ(pendulum2.index(), BodyIndex(2));
+  EXPECT_EQ(pendulum.index(), LinkIndex(1));
+  EXPECT_EQ(pendulum2.index(), LinkIndex(2));
 
   // Tests API to access bodies.
-  EXPECT_EQ(model->get_body(BodyIndex(1)).index(), pendulum.index());
-  EXPECT_EQ(model->get_body(BodyIndex(2)).index(), pendulum2.index());
+  EXPECT_EQ(model->get_body(LinkIndex(1)).index(), pendulum.index());
+  EXPECT_EQ(model->get_body(LinkIndex(2)).index(), pendulum2.index());
 
   // Verifies that an exception is throw if a call to Finalize() is attempted to
   // an already finalized MultibodyTree.
@@ -343,7 +343,7 @@ class TreeTopologyTests : public ::testing::Test {
   // Performs a number of tests on the BodyNodeTopology corresponding to the
   // body indexed by `body`.
   static void TestBodyNode(const MultibodyTreeTopology& topology,
-                           BodyIndex body) {
+                           LinkIndex body) {
     const MobodIndex node = topology.get_body(body).mobod_index;
 
     // Verify that the corresponding Body and BodyNode reference each other
@@ -365,7 +365,7 @@ class TreeTopologyTests : public ::testing::Test {
 
     if (body != world_index()) {
       // Verifies BodyNode has the parent node to the correct body.
-      const BodyIndex parent_body = topology.get_body_node(parent_node).body;
+      const LinkIndex parent_body = topology.get_body_node(parent_node).body;
       EXPECT_TRUE(parent_body.is_valid());
       EXPECT_EQ(parent_body, topology.get_body(body).parent_body);
       EXPECT_EQ(topology.get_body_node(parent_node).index,
@@ -390,9 +390,9 @@ class TreeTopologyTests : public ::testing::Test {
   }
 
   static const BodyNodeTopology& node_topology_from_body_index(
-      const MultibodyTreeTopology& topology, int body_index) {
+      const MultibodyTreeTopology& topology, int link_index) {
     return topology.get_body_node(
-        topology.get_body(BodyIndex(body_index)).mobod_index);
+        topology.get_body(LinkIndex(link_index)).mobod_index);
   }
 
   static void VerifyTopology(const MultibodyTreeTopology& topology) {
@@ -407,15 +407,15 @@ class TreeTopologyTests : public ::testing::Test {
     // These sets contain the indexes of the bodies in each tree level.
     // The order of these indexes in each set is not important, but only the
     // fact that they belong to the appropriate set.
-    set<BodyIndex> expected_level0 = {BodyIndex(0)};
-    set<BodyIndex> expected_level1 = {BodyIndex(4), BodyIndex(7), BodyIndex(5),
-                                      BodyIndex(9)};
-    set<BodyIndex> expected_level2 = {BodyIndex(2), BodyIndex(1), BodyIndex(3),
-                                      BodyIndex(8)};
-    set<BodyIndex> expected_level3 = {BodyIndex(6)};
+    set<LinkIndex> expected_level0 = {LinkIndex(0)};
+    set<LinkIndex> expected_level1 = {LinkIndex(4), LinkIndex(7), LinkIndex(5),
+                                      LinkIndex(9)};
+    set<LinkIndex> expected_level2 = {LinkIndex(2), LinkIndex(1), LinkIndex(3),
+                                      LinkIndex(8)};
+    set<LinkIndex> expected_level3 = {LinkIndex(6)};
 
-    std::vector<std::set<BodyIndex>> levels(topology.num_bodies());
-    for (BodyIndex b(0); b < topology.num_bodies(); ++b) {
+    std::vector<std::set<LinkIndex>> levels(topology.num_bodies());
+    for (LinkIndex b(0); b < topology.num_bodies(); ++b) {
       const BodyTopology& body = topology.get_body(b);
       levels[body.level].insert(b);
     }
@@ -439,7 +439,7 @@ class TreeTopologyTests : public ::testing::Test {
     EXPECT_EQ(node_topology_from_body_index(topology, 6).get_num_children(), 0);
 
     // Checks the correctness of each BodyNode associated with a body.
-    for (BodyIndex body(0); body < kNumBodies; ++body) {
+    for (LinkIndex body(0); body < kNumBodies; ++body) {
       TestBodyNode(topology, body);
     }
 
@@ -472,15 +472,15 @@ class TreeTopologyTests : public ::testing::Test {
     // The world body does not belong to a tree. Therefore the returned index is
     // invalid.
     EXPECT_FALSE(topology.body_to_tree_index(world_index()).is_valid());
-    EXPECT_EQ(topology.body_to_tree_index(BodyIndex(7)), TreeIndex(0));
-    EXPECT_EQ(topology.body_to_tree_index(BodyIndex(5)), TreeIndex(1));
-    EXPECT_EQ(topology.body_to_tree_index(BodyIndex(3)), TreeIndex(1));
-    EXPECT_EQ(topology.body_to_tree_index(BodyIndex(9)), TreeIndex(2));
-    EXPECT_EQ(topology.body_to_tree_index(BodyIndex(8)), TreeIndex(2));
-    EXPECT_EQ(topology.body_to_tree_index(BodyIndex(4)), TreeIndex(3));
-    EXPECT_EQ(topology.body_to_tree_index(BodyIndex(2)), TreeIndex(3));
-    EXPECT_EQ(topology.body_to_tree_index(BodyIndex(1)), TreeIndex(3));
-    EXPECT_EQ(topology.body_to_tree_index(BodyIndex(6)), TreeIndex(3));
+    EXPECT_EQ(topology.body_to_tree_index(LinkIndex(7)), TreeIndex(0));
+    EXPECT_EQ(topology.body_to_tree_index(LinkIndex(5)), TreeIndex(1));
+    EXPECT_EQ(topology.body_to_tree_index(LinkIndex(3)), TreeIndex(1));
+    EXPECT_EQ(topology.body_to_tree_index(LinkIndex(9)), TreeIndex(2));
+    EXPECT_EQ(topology.body_to_tree_index(LinkIndex(8)), TreeIndex(2));
+    EXPECT_EQ(topology.body_to_tree_index(LinkIndex(4)), TreeIndex(3));
+    EXPECT_EQ(topology.body_to_tree_index(LinkIndex(2)), TreeIndex(3));
+    EXPECT_EQ(topology.body_to_tree_index(LinkIndex(1)), TreeIndex(3));
+    EXPECT_EQ(topology.body_to_tree_index(LinkIndex(6)), TreeIndex(3));
 
     EXPECT_EQ(topology.num_velocities(), 7);
     EXPECT_EQ(topology.velocity_to_tree_index(0), TreeIndex(0));
@@ -544,13 +544,13 @@ TEST_F(TreeTopologyTests, SizesAndIndexing) {
   for (MobodIndex mobod_index(1); /* Skips the world mobilized body. */
        mobod_index < topology.num_mobods(); ++mobod_index) {
     const BodyNodeTopology& node = topology.get_body_node(mobod_index);
-    const BodyIndex body_index = node.body;
+    const LinkIndex link_index = node.body;
     const MobilizerIndex mobilizer_index = node.mobilizer;
 
     const MobilizerTopology& mobilizer_topology =
         topology.get_mobilizer(mobilizer_index);
 
-    EXPECT_EQ(body_index, bodies_[body_index]->index());
+    EXPECT_EQ(link_index, bodies_[link_index]->index());
     if (mobilizers_[mobilizer_index] != nullptr) {  // skip welds
       EXPECT_EQ(mobilizer_index, mobilizers_[mobilizer_index]->index());
     }
@@ -653,7 +653,7 @@ TEST_F(TreeTopologyTests, KinematicPathToWorld) {
   FinalizeModel();
   const MultibodyTreeTopology& topology = model_->get_topology();
 
-  const BodyIndex body6_index(6);
+  const LinkIndex body6_index(6);
   const MobodIndex body6_mobod_index =
       topology.get_body(body6_index).mobod_index;
   const BodyNodeTopology& body6_node =
@@ -668,15 +668,15 @@ TEST_F(TreeTopologyTests, KinematicPathToWorld) {
   EXPECT_EQ(static_cast<int>(path_to_world.size()), expected_path_size);
 
   // These are the expected bodies in the path.
-  const std::vector<BodyIndex> expected_bodies_path =
-      {BodyIndex(0), BodyIndex(4), BodyIndex(1), BodyIndex(6)};
+  const std::vector<LinkIndex> expected_bodies_path =
+      {LinkIndex(0), LinkIndex(4), LinkIndex(1), LinkIndex(6)};
 
-  for (BodyIndex body_index : expected_bodies_path) {
+  for (LinkIndex link_index : expected_bodies_path) {
     // The path is computed in terms of mobilized body (BodyNode) indexes.
     // Therefore obtain the expected value of the mobod_index from the expected
     // value of the body index.
     const MobodIndex expected_mobod_index =
-        topology.get_body(body_index).mobod_index;
+        topology.get_body(link_index).mobod_index;
     const BodyNodeTopology& node = topology.get_body_node(expected_mobod_index);
     // Both, expected and computed nodes must be at the same level (depth) in
     // the tree.
@@ -689,30 +689,30 @@ TEST_F(TreeTopologyTests, KinematicPathToWorld) {
 TEST_F(TreeTopologyTests, GetTransitiveOutboardBodies) {
   FinalizeModel();
   const MultibodyTreeTopology& topology = model_->get_topology();
-  const BodyIndex body1_index(1);
-  const BodyIndex body2_index(2);
-  const BodyIndex body4_index(4);
-  const BodyIndex body6_index(6);
-  const BodyIndex body8_index(8);
-  const BodyIndex body9_index(9);
+  const LinkIndex body1_index(1);
+  const LinkIndex body2_index(2);
+  const LinkIndex body4_index(4);
+  const LinkIndex body6_index(6);
+  const LinkIndex body8_index(8);
+  const LinkIndex body9_index(9);
 
-  const std::vector<BodyIndex> body4{body4_index};
-  std::vector<BodyIndex> expected_outboard_bodies{body1_index, body2_index,
+  const std::vector<LinkIndex> body4{body4_index};
+  std::vector<LinkIndex> expected_outboard_bodies{body1_index, body2_index,
                                                   body4_index, body6_index};
   EXPECT_EQ(topology.GetTransitiveOutboardBodies(body4),
             expected_outboard_bodies);
 
-  const std::vector<BodyIndex> body14{body1_index, body4_index};
+  const std::vector<LinkIndex> body14{body1_index, body4_index};
   EXPECT_EQ(topology.GetTransitiveOutboardBodies(body14),
             expected_outboard_bodies);
 
-  const std::vector<BodyIndex> body94{body9_index, body4_index};
+  const std::vector<LinkIndex> body94{body9_index, body4_index};
   expected_outboard_bodies.emplace_back(body8_index);
   expected_outboard_bodies.emplace_back(body9_index);
   EXPECT_EQ(topology.GetTransitiveOutboardBodies(body94),
             expected_outboard_bodies);
 
-  const std::vector<BodyIndex> body6{body6_index};
+  const std::vector<LinkIndex> body6{body6_index};
   expected_outboard_bodies.clear();
   expected_outboard_bodies.emplace_back(body6_index);
   EXPECT_EQ(topology.GetTransitiveOutboardBodies(body6),
@@ -838,17 +838,17 @@ GTEST_TEST(WeldedBodies, CreateListOfWeldedBodies) {
   const MultibodyTreeTopology& topology = model.get_topology();
 
   // Ask the topology to build the list of welded bodies.
-  std::vector<std::set<BodyIndex>> welded_bodies =
+  std::vector<std::set<LinkIndex>> welded_bodies =
       topology.CreateListOfWeldedBodies();
   ASSERT_EQ(welded_bodies.size(), 7);
 
   // Welded body "0" must correspond to the set of bodies welded to the world.
-  const std::set<BodyIndex>& world_welded_body = welded_bodies[0];
+  const std::set<LinkIndex>& world_welded_body = welded_bodies[0];
   // Therefore world_welded_body must contain the index of the world body.
   EXPECT_NE(world_welded_body.find(world_index()), world_welded_body.end());
 
   // Build the expected result.
-  std::set<std::set<BodyIndex>> expected_welded_bodies;
+  std::set<std::set<LinkIndex>> expected_welded_bodies;
   expected_welded_bodies.insert({body_a.index(), body_b.index()});
   expected_welded_bodies.insert({body_c.index()});
   expected_welded_bodies.insert(
@@ -862,7 +862,7 @@ GTEST_TEST(WeldedBodies, CreateListOfWeldedBodies) {
   // In order to compare the computed list of welded bodies against the expected
   // list, irrespective of the ordering in the computed list, we first convert
   // the computed list to a set.
-  std::set<std::set<BodyIndex>> welded_bodies_set(
+  std::set<std::set<LinkIndex>> welded_bodies_set(
       welded_bodies.begin(), welded_bodies.end());
 
   // Verify the computed list has the expected entries.
@@ -872,12 +872,12 @@ GTEST_TEST(WeldedBodies, CreateListOfWeldedBodies) {
   // We verify this with IsBodyAnchored().
   for (size_t welded_body_index = 0;
        welded_body_index < welded_bodies.size(); ++welded_body_index) {
-    const std::set<BodyIndex>& welded_body = welded_bodies[welded_body_index];
+    const std::set<LinkIndex>& welded_body = welded_bodies[welded_body_index];
     // All bodies in welded_bodies[0] are, by definition, anchored to the world.
     // We verify this with IsBodyAnchored().
-    for (BodyIndex body_index : welded_body) {
+    for (LinkIndex link_index : welded_body) {
         EXPECT_EQ(
-            topology.IsBodyAnchored(body_index),
+            topology.IsBodyAnchored(link_index),
             welded_body_index == 0 /* 'true' for anchored bodies. */);
     }
   }
@@ -954,7 +954,7 @@ GTEST_TEST(DefaultInertia, VerifyDefaultRotationalInertia) {
   EXPECT_FALSE(I_C.IsZero());
 
   // Create various sets of body indexes.
-  std::set<BodyIndex> bodies_AA, bodies_AB, bodies_BC, bodies_ABC;
+  std::set<LinkIndex> bodies_AA, bodies_AB, bodies_BC, bodies_ABC;
   bodies_AA.insert({body_A.index(), body_A.index()});
   bodies_AB.insert({body_A.index(), body_B.index()});
   bodies_BC.insert({body_B.index(), body_C.index()});

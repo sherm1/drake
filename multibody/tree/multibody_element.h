@@ -23,7 +23,7 @@ class MultibodyPlant;
 ///
 /// @code
 /// /** Returns this element's unique index. */
-/// BodyIndex index() const { return this->template index_impl<BodyIndex>(); }
+/// LinkIndex index() const { return this->template index_impl<LinkIndex>(); }
 /// @endcode
 ///
 /// @tparam_default_scalar

@@ -655,14 +655,14 @@ class MultibodyTree {
   }
 
   // See MultibodyPlant method.
-  const Body<T>& get_body(BodyIndex body_index) const {
-    DRAKE_THROW_UNLESS(body_index < num_bodies());
-    return *owned_bodies_[body_index];
+  const Body<T>& get_body(LinkIndex link_index) const {
+    DRAKE_THROW_UNLESS(link_index < num_bodies());
+    return *owned_bodies_[link_index];
   }
 
-  Body<T>& get_mutable_body(BodyIndex body_index) {
-    DRAKE_THROW_UNLESS(body_index < num_bodies());
-    return *owned_bodies_[body_index];
+  Body<T>& get_mutable_body(LinkIndex link_index) {
+    DRAKE_THROW_UNLESS(link_index < num_bodies());
+    return *owned_bodies_[link_index];
   }
 
   // See MultibodyPlant method.
@@ -829,7 +829,7 @@ class MultibodyTree {
       std::string_view name, ModelInstanceIndex model_instance) const;
 
   // Returns a list of body indices associated with `model_instance`.
-  std::vector<BodyIndex> GetBodyIndices(ModelInstanceIndex model_instance)
+  std::vector<LinkIndex> GetBodyIndices(ModelInstanceIndex model_instance)
   const;
 
   // Returns a list of joint indices associated with `model_instance`.
@@ -933,7 +933,7 @@ class MultibodyTree {
   const MultibodyTreeTopology& get_topology() const { return topology_; }
 
   // See MultibodyPlant method.
-  std::vector<BodyIndex> GetBodiesKinematicallyAffectedBy(
+  std::vector<LinkIndex> GetBodiesKinematicallyAffectedBy(
       const std::vector<JointIndex>& joint_indexes) const;
 
   // Returns the mobilizer model for joint with index `joint_index`. The index
@@ -1199,7 +1199,7 @@ class MultibodyTree {
   SpatialInertia<T> CalcSpatialInertia(
       const systems::Context<T>& context,
       const Frame<T>& frame_F,
-      const std::vector<BodyIndex>& body_indexes) const;
+      const std::vector<LinkIndex>& body_indexes) const;
 
   // See MultibodyPlant method.
   Vector3<T> CalcCenterOfMassTranslationalVelocityInWorld(
@@ -1512,7 +1512,7 @@ class MultibodyTree {
 
   // See MultibodyPlant method.
   // @warning The output parameter `A_WB_array` is indexed by MobodIndex,
-  // while MultibodyPlant's method returns accelerations indexed by BodyIndex.
+  // while MultibodyPlant's method returns accelerations indexed by LinkIndex.
   void CalcSpatialAccelerationsFromVdot(
       const systems::Context<T>& context,
       const PositionKinematicsCache<T>& pc,
@@ -2276,9 +2276,9 @@ class MultibodyTree {
     auto tree_clone = std::make_unique<MultibodyTree<ToScalar>>();
 
     tree_clone->frames_.resize(num_frames());
-    // Skipping the world body at body_index = 0.
-    for (BodyIndex body_index(1); body_index < num_bodies(); ++body_index) {
-      const Body<T>& body = get_body(body_index);
+    // Skipping the world body at link_index = 0.
+    for (LinkIndex link_index(1); link_index < num_bodies(); ++link_index) {
+      const Body<T>& body = get_body(link_index);
       tree_clone->CloneBodyAndAdd(body);
     }
 
@@ -2289,7 +2289,7 @@ class MultibodyTree {
     // Partially copy multibody_graph_. The looped calls to RegisterJointInGraph
     // below copy the second half. Skip World since it was created by
     // MultibodyTree's default constructor above.
-    for (BodyIndex index(1); index < num_bodies(); ++index) {
+    for (LinkIndex index(1); index < num_bodies(); ++index) {
       const Body<T>& body = get_body(index);
       tree_clone->multibody_graph_.AddBody(body.name(), body.model_instance());
     }
@@ -2554,22 +2554,22 @@ class MultibodyTree {
     return discrete_state_index_;
   }
 
-  // Calculates the total default mass of all bodies in a set of BodyIndex.
-  // @param[in] body_indexes A set of BodyIndex.
+  // Calculates the total default mass of all bodies in a set of LinkIndex.
+  // @param[in] body_indexes A set of LinkIndex.
   // @retval Total mass of all bodies in body_indexes or 0 if there is no mass.
-  double CalcTotalDefaultMass(const std::set<BodyIndex>& body_indexes) const;
+  double CalcTotalDefaultMass(const std::set<LinkIndex>& body_indexes) const;
 
-  // In the set of bodies associated with BodyIndex, returns true if any of
+  // In the set of bodies associated with LinkIndex, returns true if any of
   // the bodies have a NaN default rotational inertia.
-  // @param[in] body_indexes A set of BodyIndex.
+  // @param[in] body_indexes A set of LinkIndex.
   bool IsAnyDefaultRotationalInertiaNaN(
-      const std::set<BodyIndex>& body_indexes) const;
+      const std::set<LinkIndex>& body_indexes) const;
 
-  // In the set of bodies associated with BodyIndex, returns true if all the
+  // In the set of bodies associated with LinkIndex, returns true if all the
   // bodies have a zero default rotational inertia.
-  // @param[in] body_indexes A set of BodyIndex.
+  // @param[in] body_indexes A set of LinkIndex.
   bool AreAllDefaultRotationalInertiaZero(
-      const std::set<BodyIndex>& body_indexes) const;
+      const std::set<LinkIndex>& body_indexes) const;
 
   // Throw an exception if there are bodies whose default mass or inertia
   // properties will cause subsequent numerical problems.
@@ -2759,10 +2759,10 @@ class MultibodyTree {
   //  floating bodies, the world_body(), or repeated bodies.
   // @throws std::exception if model_instances contains an invalid
   // ModelInstanceIndex.
-  // @throws std::exception if body_indexes contains an invalid BodyIndex.
+  // @throws std::exception if body_indexes contains an invalid LinkIndex.
   SpatialMomentum<T> CalcBodiesSpatialMomentumInWorldAboutWo(
       const systems::Context<T>& context,
-      const std::vector<BodyIndex>& body_indexes) const;
+      const std::vector<LinkIndex>& body_indexes) const;
 
   // Helper method to access the mobilizer of a free body.
   // If `body` is a free body in the model, this method will return the
@@ -2980,10 +2980,10 @@ class MultibodyTree {
     // TODO(amcastro-tri):
     //   DRAKE_DEMAND the parent tree of the variant is indeed a variant of this
     //   MultibodyTree. That will require the tree to have some sort of id.
-    BodyIndex body_index = body.index();
-    DRAKE_DEMAND(body_index < num_bodies());
+    LinkIndex link_index = body.index();
+    DRAKE_DEMAND(link_index < num_bodies());
     const BodyType<T>* body_variant =
-        dynamic_cast<const BodyType<T>*>(owned_bodies_[body_index].get());
+        dynamic_cast<const BodyType<T>*>(owned_bodies_[link_index].get());
     DRAKE_DEMAND(body_variant != nullptr);
     return *body_variant;
   }
@@ -3069,7 +3069,7 @@ class MultibodyTree {
   // Otherwise return std::nullopt. In particular, if the given `model_instance`
   // is the world model instance, return `std::nullopt`.
   // @throws std::exception if `model_instance` is not valid.
-  std::optional<BodyIndex> MaybeGetUniqueBaseBodyIndex(
+  std::optional<LinkIndex> MaybeGetUniqueBaseBodyIndex(
       ModelInstanceIndex model_instance) const;
 
   // Helper function for GetDefaultFreeBodyPose().
@@ -3116,7 +3116,7 @@ class MultibodyTree {
   // %MultibodyTree.
 
   // Map used to find body indexes by their body name.
-  std::unordered_multimap<StringViewMapKey, BodyIndex> body_name_to_index_;
+  std::unordered_multimap<StringViewMapKey, LinkIndex> body_name_to_index_;
 
   // Map used to find frame indexes by their frame name.
   std::unordered_multimap<StringViewMapKey, FrameIndex> frame_name_to_index_;
@@ -3156,7 +3156,7 @@ class MultibodyTree {
   // without any numerical conversions and thereby avoiding roundoff errors and
   // surprising discrepancies pre and post finalize.
   std::unordered_map<
-      BodyIndex, std::variant<JointIndex, std::pair<Eigen::Quaternion<double>,
+      LinkIndex, std::variant<JointIndex, std::pair<Eigen::Quaternion<double>,
                                                     Vector3<double>>>>
       default_body_poses_;
 

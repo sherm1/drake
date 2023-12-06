@@ -16,7 +16,7 @@ namespace multibody {
 class MultibodyElementTester {
  public:
   MultibodyElementTester() = delete;
-  static void set_index(Body<double>* element, BodyIndex index) {
+  static void set_index(Body<double>* element, LinkIndex index) {
     // MultibodyTree parameter is null; don't call anything that depends on the
     // tree.
     element->set_parent_tree(nullptr, index);
@@ -52,7 +52,7 @@ namespace {
 // Minimal definition of a body that we can use to construct a BodyNode.
 class DummyBody : public Body<double> {
  public:
-  DummyBody(std::string name, BodyIndex index)
+  DummyBody(std::string name, LinkIndex index)
       : Body(std::move(name), ModelInstanceIndex(0)) {
     // We need a body index for the body node test to be happy.
     MultibodyElementTester::set_index(this, index);
@@ -108,7 +108,7 @@ class DummyBody : public Body<double> {
 GTEST_TEST(BodyNodeTest, FactorArticulatedBodyHingeInertiaMatrixErrorMessages) {
   // Construct enough of a node so we can invoke the dut with known body names.
   const DummyBody parent("parent", world_index());
-  const DummyBody child("child", BodyIndex(1));
+  const DummyBody child("child", LinkIndex(1));
   const BodyNode<double> parent_node(nullptr, &parent, nullptr);
 
   // A 1x1 articulated body hinge inertia matrix.
@@ -173,7 +173,7 @@ GTEST_TEST(BodyNodeTest, FactorHingeMatrixThrows) {
   using Matrix = MatrixUpTo6<double>;
 
   const DummyBody world("world", world_index());
-  const DummyBody body("child", BodyIndex(1));
+  const DummyBody body("child", LinkIndex(1));
   const RevoluteMobilizer<double> mobilizer(
       world.body_frame(), body.body_frame(), Vector3d{0, 0, 1});
   const BodyNode<double> world_node(nullptr, &world, nullptr);

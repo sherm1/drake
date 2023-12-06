@@ -163,7 +163,7 @@ class BodyAttorney {
 /// does it make any assumptions about the underlying physical model or
 /// approximation.
 /// As an element or component of a MultibodyPlant, a body is a
-/// MultibodyElement, and therefore it has a unique index of type BodyIndex
+/// MultibodyElement, and therefore it has a unique index of type LinkIndex
 /// within the multibody plant it belongs to.
 ///
 /// A %Body contains a unique BodyFrame; see BodyFrame class documentation for
@@ -176,7 +176,7 @@ class Body : public MultibodyElement<T> {
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(Body)
 
   /// Returns this element's unique index.
-  BodyIndex index() const { return this->template index_impl<BodyIndex>(); }
+  LinkIndex index() const { return this->template index_impl<LinkIndex>(); }
 
   /// Gets the `name` associated with `this` body. The name will never be empty.
   const std::string& name() const { return name_; }

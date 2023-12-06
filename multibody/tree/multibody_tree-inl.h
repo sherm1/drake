@@ -60,17 +60,17 @@ const BodyType<T>& MultibodyTree<T>::AddBody(
   // Make note in the graph.
   multibody_graph_.AddBody(body->name(), body->model_instance());
 
-  BodyIndex body_index(0);
+  LinkIndex link_index(0);
   FrameIndex body_frame_index(0);
-  std::tie(body_index, body_frame_index) = topology_.add_body();
+  std::tie(link_index, body_frame_index) = topology_.add_body();
   // These tests MUST be performed BEFORE frames_.push_back() and
   // owned_bodies_.push_back() below. Do not move them around!
-  DRAKE_DEMAND(body_index == num_bodies());
+  DRAKE_DEMAND(link_index == num_bodies());
   DRAKE_DEMAND(body_frame_index == num_frames());
 
   // TODO(amcastro-tri): consider not depending on setting this pointer at
   // all. Consider also removing MultibodyElement altogether.
-  body->set_parent_tree(this, body_index);
+  body->set_parent_tree(this, link_index);
   // MultibodyTree can access selected private methods in Body through its
   // BodyAttorney.
   // - Register body frame.
@@ -218,7 +218,7 @@ const MobilizerType<T>& MultibodyTree<T>::AddMobilizer(
   mobilizer->set_parent_tree(this, mobilizer_index);
 
   // Mark free bodies as needed.
-  const BodyIndex outboard_body_index = mobilizer->outboard_body().index();
+  const LinkIndex outboard_body_index = mobilizer->outboard_body().index();
   bool is_body_floating =
       mobilizer->is_floating() &&
       mobilizer->inboard_frame().body().index() == world_body().index();
@@ -460,11 +460,11 @@ Frame<T>* MultibodyTree<T>::CloneFrameAndAdd(const Frame<FromScalar>& frame) {
 template <typename T>
 template <typename FromScalar>
 Body<T>* MultibodyTree<T>::CloneBodyAndAdd(const Body<FromScalar>& body) {
-  const BodyIndex body_index = body.index();
+  const LinkIndex link_index = body.index();
   const FrameIndex body_frame_index = body.body_frame().index();
 
   auto body_clone = body.CloneToScalar(*this);
-  body_clone->set_parent_tree(this, body_index);
+  body_clone->set_parent_tree(this, link_index);
   body_clone->set_model_instance(body.model_instance());
   // MultibodyTree can access selected private methods in Body through its
   // BodyAttorney.
@@ -480,8 +480,8 @@ Body<T>* MultibodyTree<T>::CloneBodyAndAdd(const Body<FromScalar>& body) {
   Body<T>* raw_body_clone_ptr = body_clone.get();
   // The order in which bodies are added into owned_bodies_ is important to
   // keep the topology invariant. Therefore this method is called from
-  // MultibodyTree::CloneToScalar() within a loop by original body_index.
-  DRAKE_DEMAND(static_cast<int>(owned_bodies_.size()) == body_index);
+  // MultibodyTree::CloneToScalar() within a loop by original link_index.
+  DRAKE_DEMAND(static_cast<int>(owned_bodies_.size()) == link_index);
   owned_bodies_.push_back(std::move(body_clone));
   return raw_body_clone_ptr;
 }

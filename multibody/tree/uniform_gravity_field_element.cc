@@ -102,8 +102,8 @@ void UniformGravityFieldElement<T>::DoCalcAndAddForceContribution(
   const internal::MultibodyTree<T>& model = this->get_parent_tree();
   const int num_bodies = model.num_bodies();
   // Skip the "world" body.
-  for (BodyIndex body_index(1); body_index < num_bodies; ++body_index) {
-    const Body<T>& body = model.get_body(body_index);
+  for (LinkIndex link_index(1); link_index < num_bodies; ++link_index) {
+    const Body<T>& body = model.get_body(link_index);
 
     // Skip this body if gravity is disabled.
     if (!is_enabled(body.model_instance())) continue;
@@ -134,8 +134,8 @@ T UniformGravityFieldElement<T>::CalcPotentialEnergy(
   const int num_bodies = model.num_bodies();
   T TotalPotentialEnergy = 0.0;
   // Skip the "world" body.
-  for (BodyIndex body_index(1); body_index < num_bodies; ++body_index) {
-    const Body<T>& body = model.get_body(body_index);
+  for (LinkIndex link_index(1); link_index < num_bodies; ++link_index) {
+    const Body<T>& body = model.get_body(link_index);
 
     // Skip this body if gravity is disabled.
     if (!is_enabled(body.model_instance())) continue;
@@ -167,8 +167,8 @@ T UniformGravityFieldElement<T>::CalcConservativePower(
   const int num_bodies = model.num_bodies();
   T TotalConservativePower = 0.0;
   // Skip the "world" body.
-  for (BodyIndex body_index(1); body_index < num_bodies; ++body_index) {
-    const Body<T>& body = model.get_body(body_index);
+  for (LinkIndex link_index(1); link_index < num_bodies; ++link_index) {
+    const Body<T>& body = model.get_body(link_index);
 
     // Skip this body if gravity is disabled.
     if (!is_enabled(body.model_instance())) continue;

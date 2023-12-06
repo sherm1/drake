@@ -31,27 +31,29 @@ inline MobodIndex world_mobod_index() { return MobodIndex(0); }
 // N.B. To simplify checking binding coverage, please ensure these symbols
 // are defined in `tree_py.cc` in the same order.
 
-/// Type used to identify frames by index in a multibody tree system.
+/// Type used to identify frames by index in a multibody plant.
 using FrameIndex = TypeSafeIndex<class FrameTag>;
 
-/// Type used to identify bodies by index in a multibody tree system.
-using BodyIndex = TypeSafeIndex<class BodyTag>;
+/// Type used to identify links by index in a multibody plant.
+using LinkIndex = TypeSafeIndex<class LinkTag>;
 
-/// Type used to identify force elements by index within a multibody tree
-/// system.
+/// Synonym for LinkIndex; prefer LinkIndex. This exists for backwards
+/// compatibility with earlier terminology.
+using BodyIndex = LinkIndex;
+
+/// Type used to identify force elements by index within a multibody plant.
 using ForceElementIndex = TypeSafeIndex<class ForceElementTag>;
 
-/// Type used to identify joints by index within a multibody tree system.
+/// Type used to identify joints by index within a multibody plant.
 using JointIndex = TypeSafeIndex<class JointElementTag>;
 
-/// Type used to identify actuators by index within a multibody tree system.
+/// Type used to identify actuators by index within a multibody plant.
 using JointActuatorIndex = TypeSafeIndex<class JointActuatorElementTag>;
 
-/// Type used to identify constraint by id within a multibody system.
+/// Type used to identify constraint by id within a multibody plant.
 using MultibodyConstraintId = Identifier<class ConstraintTag>;
 
-/// Type used to identify model instances by index within a multibody
-/// tree system.
+/// Type used to identify model instances by index within a multibody plant.
 using ModelInstanceIndex = TypeSafeIndex<class ModelInstanceTag>;
 
 // Note:
@@ -62,7 +64,7 @@ using ModelInstanceIndex = TypeSafeIndex<class ModelInstanceTag>;
 
 /// For every MultibodyPlant the **world** body _always_ has this unique index
 /// and it is always zero.
-inline BodyIndex world_index() { return BodyIndex(0); }
+inline LinkIndex world_index() { return LinkIndex(0); }
 
 /// For every MultibodyPlant the **world** frame _always_ has this unique index
 /// and it is always zero.
