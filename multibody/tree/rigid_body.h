@@ -47,7 +47,7 @@ namespace multibody {
 ///
 /// @tparam_default_scalar
 template <typename T>
-class RigidBody : public Body<T> {
+class RigidBody : public Link<T> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(RigidBody)
 
@@ -150,7 +150,7 @@ class RigidBody : public Body<T> {
   /// center of mass) in the world frame W, expressed in W.
   Vector3<T> CalcCenterOfMassTranslationalVelocityInWorld(
       const systems::Context<T>& context) const override {
-    const Body<T>& body_B = *this;
+    const Link<T>& body_B = *this;
     const Frame<T>& frame_B = body_B.body_frame();
 
     // Form frame_B's spatial velocity in the world frame W, expressed in W.

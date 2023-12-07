@@ -12,8 +12,8 @@ namespace multibody {
 
 template <typename T>
 LinearSpringDamper<T>::LinearSpringDamper(
-    const Body<T>& bodyA, const Vector3<double>& p_AP,
-    const Body<T>& bodyB, const Vector3<double>& p_BQ,
+    const Link<T>& bodyA, const Vector3<double>& p_AP,
+    const Link<T>& bodyB, const Vector3<double>& p_BQ,
     double free_length, double stiffness, double damping) :
     ForceElement<T>(bodyA.model_instance()),
     bodyA_(bodyA),
@@ -143,9 +143,9 @@ std::unique_ptr<ForceElement<ToScalar>>
 LinearSpringDamper<T>::TemplatedDoCloneToScalar(
     const internal::MultibodyTree<ToScalar>& tree_clone) const {
   const Body<ToScalar>& bodyA_clone =
-      tree_clone.get_body(bodyA().index());
+      tree_clone.get_link(bodyA().index());
   const Body<ToScalar>& bodyB_clone =
-      tree_clone.get_body(bodyB().index());
+      tree_clone.get_link(bodyB().index());
 
   // Make the LinearSpringDamper<T> clone.
   auto spring_damper_clone = std::make_unique<LinearSpringDamper<ToScalar>>(

@@ -16,7 +16,7 @@ namespace multibody {
 class MultibodyElementTester {
  public:
   MultibodyElementTester() = delete;
-  static void set_index(Body<double>* element, LinkIndex index) {
+  static void set_index(Link<double>* element, LinkIndex index) {
     // MultibodyTree parameter is null; don't call anything that depends on the
     // tree.
     element->set_parent_tree(nullptr, index);
@@ -50,7 +50,7 @@ namespace {
 //  utilities so other tests can create mocked bodies. Possibly templatize it.
 
 // Minimal definition of a body that we can use to construct a BodyNode.
-class DummyBody : public Body<double> {
+class DummyBody : public Link<double> {
  public:
   DummyBody(std::string name, LinkIndex index)
       : Body(std::move(name), ModelInstanceIndex(0)) {

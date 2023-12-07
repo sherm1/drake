@@ -40,92 +40,92 @@ namespace multibody {
 namespace internal {
 
 template <typename T>
-template <template <typename Scalar> class BodyType>
-const BodyType<T>& MultibodyTree<T>::AddBody(
-    std::unique_ptr<BodyType<T>> body) {
-  static_assert(std::is_convertible_v<BodyType<T>*, Body<T>*>,
-                "BodyType must be a sub-class of Body<T>.");
+template <template <typename Scalar> class LinkType>
+const LinkType<T>& MultibodyTree<T>::AddLink(
+    std::unique_ptr<LinkType<T>> link) {
+  static_assert(std::is_convertible_v<LinkType<T>*, Link<T>*>,
+                "LinkType must be a sub-class of Link<T>.");
   if (topology_is_valid()) {
     throw std::logic_error(
         "This MultibodyTree is finalized already. "
-        "Therefore adding more bodies is not allowed. "
+        "Therefore adding more links is not allowed. "
         "See documentation for Finalize() for details.");
   }
-  if (body == nullptr) {
-    throw std::logic_error("Input body is a nullptr.");
+  if (link == nullptr) {
+    throw std::logic_error("Input link is a nullptr.");
   }
 
-  DRAKE_DEMAND(body->model_instance().is_valid());
+  DRAKE_DEMAND(link->model_instance().is_valid());
 
   // Make note in the graph.
-  multibody_graph_.AddBody(body->name(), body->model_instance());
+  multibody_graph_.AddLink(link->name(), link->model_instance());
 
   LinkIndex link_index(0);
-  FrameIndex body_frame_index(0);
-  std::tie(link_index, body_frame_index) = topology_.add_body();
+  FrameIndex link_frame_index(0);
+  std::tie(link_index, link_frame_index) = topology_.add_link();
   // These tests MUST be performed BEFORE frames_.push_back() and
-  // owned_bodies_.push_back() below. Do not move them around!
-  DRAKE_DEMAND(link_index == num_bodies());
-  DRAKE_DEMAND(body_frame_index == num_frames());
+  // owned_links_.push_back() below. Do not move them around!
+  DRAKE_DEMAND(link_index == num_links());
+  DRAKE_DEMAND(link_frame_index == num_frames());
 
   // TODO(amcastro-tri): consider not depending on setting this pointer at
   // all. Consider also removing MultibodyElement altogether.
-  body->set_parent_tree(this, link_index);
-  // MultibodyTree can access selected private methods in Body through its
-  // BodyAttorney.
-  // - Register body frame.
-  Frame<T>* body_frame =
-      &internal::BodyAttorney<T>::get_mutable_body_frame(body.get());
-  body_frame->set_parent_tree(this, body_frame_index);
-  DRAKE_ASSERT(body_frame->name() == body->name());
-  this->SetElementIndex(body_frame->name(), body_frame_index,
+  link->set_parent_tree(this, link_index);
+  // MultibodyTree can access selected private methods in Link through its
+  // LinkAttorney.
+  // - Register link frame.
+  Frame<T>* link_frame =
+      &internal::LinkAttorney<T>::get_mutable_link_frame(link.get());
+  link_frame->set_parent_tree(this, link_frame_index);
+  DRAKE_ASSERT(link_frame->name() == link->name());
+  this->SetElementIndex(link_frame->name(), link_frame_index,
                         &frame_name_to_index_);
-  frames_.push_back(body_frame);
-  // - Register body.
-  BodyType<T>* raw_body_ptr = body.get();
-  this->SetElementIndex(body->name(), body->index(), &body_name_to_index_);
-  owned_bodies_.push_back(std::move(body));
-  return *raw_body_ptr;
+  frames_.push_back(link_frame);
+  // - Register link.
+  LinkType<T>* raw_link_ptr = link.get();
+  this->SetElementIndex(link->name(), link->index(), &link_name_to_index_);
+  owned_links_.push_back(std::move(link));
+  return *raw_link_ptr;
 }
 
 template <typename T>
-template<template<typename Scalar> class BodyType, typename... Args>
-const BodyType<T>& MultibodyTree<T>::AddBody(Args&&... args) {
-  static_assert(std::is_convertible_v<BodyType<T>*, Body<T>*>,
-                "BodyType must be a sub-class of Body<T>.");
-  return AddBody(std::make_unique<BodyType<T>>(std::forward<Args>(args)...));
+template<template<typename Scalar> class LinkType, typename... Args>
+const LinkType<T>& MultibodyTree<T>::AddLink(Args&&... args) {
+  static_assert(std::is_convertible_v<LinkType<T>*, Link<T>*>,
+                "LinkType must be a sub-class of Link<T>.");
+  return AddLink(std::make_unique<LinkType<T>>(std::forward<Args>(args)...));
 }
 
 template <typename T>
-const RigidBody<T>& MultibodyTree<T>::AddRigidBody(
+const RigidLink<T>& MultibodyTree<T>::AddRigidLink(
     const std::string& name, ModelInstanceIndex model_instance,
     const SpatialInertia<double>& M_BBo_B) {
   if (model_instance >= num_model_instances()) {
     throw std::logic_error("Invalid model instance specified.");
   }
 
-  if (HasBodyNamed(name, model_instance)) {
+  if (HasLinkNamed(name, model_instance)) {
     throw std::logic_error(
         "Model instance '" + instance_index_to_name_.at(model_instance) +
-            "' already contains a body named '" + name + "'. " +
-            "Body names must be unique within a given model.");
+            "' already contains a link named '" + name + "'. " +
+            "Link names must be unique within a given model.");
   }
 
-  const RigidBody<T>& body =
-      this->template AddBody<RigidBody>(name, model_instance, M_BBo_B);
-  return body;
+  const RigidLink<T>& link =
+      this->template AddLink<RigidLink>(name, model_instance, M_BBo_B);
+  return link;
 }
 
 template <typename T>
-const RigidBody<T>& MultibodyTree<T>::AddRigidBody(
+const RigidLink<T>& MultibodyTree<T>::AddRigidLink(
     const std::string& name, const SpatialInertia<double>& M_BBo_B) {
   if (num_model_instances() != 2) {
     throw std::logic_error(
         "This model has more model instances than the default.  Please "
-        "call AddRigidBody with an explicit model instance.");
+        "call AddRigidLink with an explicit model instance.");
   }
 
-  return AddRigidBody(name, default_model_instance(), M_BBo_B);
+  return AddRigidLink(name, default_model_instance(), M_BBo_B);
 }
 
 template <typename T>
@@ -149,7 +149,7 @@ const FrameType<T>& MultibodyTree<T>::AddFrame(
         "Frame names must be unique within a given model.",
         instance_index_to_name_.at(frame->model_instance()), frame->name()));
   }
-  FrameIndex frame_index = topology_.add_frame(frame->body().index());
+  FrameIndex frame_index = topology_.add_frame(frame->link().index());
   // This test MUST be performed BEFORE frames_.push_back() and
   // owned_frames_.push_back() below. Do not move it around!
   DRAKE_DEMAND(frame_index == num_frames());
@@ -217,11 +217,11 @@ const MobilizerType<T>& MultibodyTree<T>::AddMobilizer(
   //  all. Consider also removing MultibodyElement altogether.
   mobilizer->set_parent_tree(this, mobilizer_index);
 
-  // Mark free bodies as needed.
+  // Mark free mobilized bodies as needed.
   const LinkIndex outboard_body_index = mobilizer->outboard_body().index();
   bool is_body_floating =
       mobilizer->is_floating() &&
-      mobilizer->inboard_frame().body().index() == world_body().index();
+      mobilizer->inboard_frame().link().index() == world_body().index();
 
   topology_.get_mutable_body(outboard_body_index).is_floating =
       is_body_floating;
@@ -317,19 +317,19 @@ const JointType<T>& MultibodyTree<T>::AddJoint(
     throw std::logic_error("Input joint is a nullptr.");
   }
 
-  if (&joint->parent_body() == &joint->child_body()) {
+  if (&joint->parent_link() == &joint->child_link()) {
     throw std::logic_error(
-        fmt::format("AddJoint(): joint {} would connect body {} to itself.",
-                    joint->name(), joint->parent_body().name()));
+        fmt::format("AddJoint(): joint {} would connect link {} to itself.",
+                    joint->name(), joint->parent_link().name()));
   }
 
-  if (&joint->parent_body().get_parent_tree() !=
-      &joint->child_body().get_parent_tree()) {
+  if (&joint->parent_link().get_parent_tree() !=
+      &joint->child_link().get_parent_tree()) {
     throw std::logic_error(
-        fmt::format("AddJoint(): can't add joint {} because bodies {} "
+        fmt::format("AddJoint(): can't add joint {} because links {} "
                     "and {} are from different MultibodyPlants.",
-                    joint->name(), joint->parent_body().name(),
-                    joint->child_body().name()));
+                    joint->name(), joint->parent_link().name(),
+                    joint->child_link().name()));
   }
 
   // This will check some additional error conditions.
@@ -347,15 +347,15 @@ template <typename T>
 template<template<typename> class JointType, typename... Args>
 const JointType<T>& MultibodyTree<T>::AddJoint(
     const std::string& name,
-    const Body<T>& parent,
+    const Link<T>& parent,
     const std::optional<math::RigidTransform<double>>& X_PF,
-    const Body<T>& child,
+    const Link<T>& child,
     const std::optional<math::RigidTransform<double>>& X_BM,
     Args&&... args) {
   static_assert(std::is_base_of_v<Joint<T>, JointType<T>>,
                 "JointType<T> must be a sub-class of Joint<T>.");
   // The Joint constructor promises that the Joint's model instance will be the
-  // same as the child body's model instance. We'll assume that for now, and
+  // same as the child link's model instance. We'll assume that for now, and
   // then cross-check it at the bottom of this function. We need to use the same
   // model instance when creating any offset frames needed for the joint.
   const ModelInstanceIndex joint_instance = child.model_instance();
@@ -459,31 +459,31 @@ Frame<T>* MultibodyTree<T>::CloneFrameAndAdd(const Frame<FromScalar>& frame) {
 
 template <typename T>
 template <typename FromScalar>
-Body<T>* MultibodyTree<T>::CloneBodyAndAdd(const Body<FromScalar>& body) {
-  const LinkIndex link_index = body.index();
-  const FrameIndex body_frame_index = body.body_frame().index();
+Link<T>* MultibodyTree<T>::CloneLinkAndAdd(const Link<FromScalar>& link) {
+  const LinkIndex link_index = link.index();
+  const FrameIndex link_frame_index = link.link_frame().index();
 
-  auto body_clone = body.CloneToScalar(*this);
-  body_clone->set_parent_tree(this, link_index);
-  body_clone->set_model_instance(body.model_instance());
-  // MultibodyTree can access selected private methods in Body through its
-  // BodyAttorney.
-  Frame<T>* body_frame_clone =
-      &internal::BodyAttorney<T>::get_mutable_body_frame(body_clone.get());
-  body_frame_clone->set_parent_tree(this, body_frame_index);
-  body_frame_clone->set_model_instance(body.model_instance());
+  auto link_clone = link.CloneToScalar(*this);
+  link_clone->set_parent_tree(this, link_index);
+  link_clone->set_model_instance(link.model_instance());
+  // MultibodyTree can access selected private methods in Link through its
+  // LinkAttorney.
+  Frame<T>* link_frame_clone =
+      &internal::LinkAttorney<T>::get_mutable_link_frame(link_clone.get());
+  link_frame_clone->set_parent_tree(this, link_frame_index);
+  link_frame_clone->set_model_instance(link.model_instance());
 
   // The order in which frames are added into frames_ is important to keep the
   // topology invariant. Therefore we index new clones according to the
-  // original body_frame_index.
-  frames_[body_frame_index] = body_frame_clone;
-  Body<T>* raw_body_clone_ptr = body_clone.get();
-  // The order in which bodies are added into owned_bodies_ is important to
+  // original link_frame_index.
+  frames_[link_frame_index] = link_frame_clone;
+  Link<T>* raw_link_clone_ptr = link_clone.get();
+  // The order in which links are added into owned_links_ is important to
   // keep the topology invariant. Therefore this method is called from
   // MultibodyTree::CloneToScalar() within a loop by original link_index.
-  DRAKE_DEMAND(static_cast<int>(owned_bodies_.size()) == link_index);
-  owned_bodies_.push_back(std::move(body_clone));
-  return raw_body_clone_ptr;
+  DRAKE_DEMAND(static_cast<int>(owned_links_.size()) == link_index);
+  owned_links_.push_back(std::move(link_clone));
+  return raw_link_clone_ptr;
 }
 
 template <typename T>

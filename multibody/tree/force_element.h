@@ -215,11 +215,11 @@ class ForceElement : public MultibodyElement<T> {
   ///    public:
   ///     // Class's constructor.
   ///     SpringElement(
-  ///       const Body<T>& body1, const Body<T>& body2, double stiffness);
+  ///       const Link<T>& body1, const Link<T>& body2, double stiffness);
   ///     // Get the first body to which this spring is connected.
-  ///     const Body<T>& get_body1() const;
+  ///     const Link<T>& get_body1() const;
   ///     // Get the second body to which this spring is connected.
-  ///     const Body<T>& get_body2() const;
+  ///     const Link<T>& get_body2() const;
   ///     // Get the spring stiffness constant.
   ///     double get_stiffness() const;
   ///    protected:

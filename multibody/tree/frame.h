@@ -56,19 +56,27 @@ class Frame : public FrameBase<T> {
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(Frame)
 
   /// Returns a const reference to the body associated to this %Frame.
-  const Link<T>& body() const {
+  const Link<T>& link() const {
     return link_;
   }
+
+  /// Synonym for link(); prefer link(). This exists for backwards
+  /// compatibility with older terminology.
+  const Link<T>& body() const { return link(); }
 
   /// Returns true if `this` is the world frame.
   bool is_world_frame() const {
     return this->index() == world_frame_index();
   }
 
-  /// Returns true if `this` is the body frame.
-  bool is_body_frame() const {
+  /// Returns true if `this` is the link frame.
+  bool is_link_frame() const {
     return this->index() == link_.body_frame().index();
   }
+
+  /// Synonym for is_link_frame(); prefer is_link_frame(). This exists for
+  /// backwards compatibility with older terminology.
+  bool is_body_frame() const { return is_link_frame(); }
 
   /// Returns the name of this frame. The name will never be empty.
   const std::string& name() const {

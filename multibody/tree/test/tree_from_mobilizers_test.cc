@@ -228,13 +228,13 @@ class PendulumTests : public ::testing::Test {
 
   // Helper method to extract a pose from the position kinematics.
   // TODO(amcastro-tri):
-  // Replace this by a method Body<T>::get_pose_in_world(const Context<T>&)
+  // Replace this by a method Link<T>::get_pose_in_world(const Context<T>&)
   // when we can place cache entries in the context.
   template <typename T>
   static const RigidTransform<T> get_body_pose_in_world(
       const MultibodyTree<T>& tree,
       const PositionKinematicsCache<T>& pc,
-      const Body<T>& body) {
+      const Link<T>& body) {
     const MultibodyTreeTopology& topology = tree.get_topology();
     // Cache entries are accessed by MobodIndex for fast traversals.
     const MobodIndex mobod_index = topology.get_body(body.index()).mobod_index;
@@ -245,12 +245,12 @@ class PendulumTests : public ::testing::Test {
   // cache.
   // TODO(amcastro-tri):
   // Replace this by a method
-  // Body<T>::get_spatial_velocity_in_world(const Context<T>&)
+  // Link<T>::get_spatial_velocity_in_world(const Context<T>&)
   // when we can place cache entries in the context.
   static const SpatialVelocity<double>& get_body_spatial_velocity_in_world(
       const MultibodyTree<double>& tree,
       const VelocityKinematicsCache<double>& vc,
-      const Body<double>& body) {
+      const Link<double>& body) {
     const MultibodyTreeTopology& topology = tree.get_topology();
     // Cache entries are accessed by MobodIndex for fast traversals.
     return vc.get_V_WB(topology.get_body(body.index()).mobod_index);
@@ -260,12 +260,12 @@ class PendulumTests : public ::testing::Test {
   // kinematics cache.
   // TODO(amcastro-tri):
   // Replace this by a method
-  // Body<T>::get_spatial_acceleration_in_world(const Context<T>&)
+  // Link<T>::get_spatial_acceleration_in_world(const Context<T>&)
   // when we can place cache entries in the context.
   static const SpatialAcceleration<double>&
   get_body_spatial_acceleration_in_world(
       const MultibodyTree<double>& tree,
-      const AccelerationKinematicsCache<double>& ac, const Body<double>& body) {
+      const AccelerationKinematicsCache<double>& ac, const Link<double>& body) {
     const MultibodyTreeTopology& topology = tree.get_topology();
     // Cache entries are accessed by MobodIndex for fast traversals.
     return ac.get_A_WB(topology.get_body(body.index()).mobod_index);
@@ -282,7 +282,7 @@ class PendulumTests : public ::testing::Test {
   // Add elements to this model_ and then transfer the whole thing to
   // a MultibodyTreeSystem for execution.
   std::unique_ptr<MultibodyTree<double>> model_;
-  const Body<double>* world_body_{nullptr};
+  const Link<double>* world_body_{nullptr};
 
   // Bodies:
   const RigidBody<double>* upper_link_{nullptr};

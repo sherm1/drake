@@ -51,23 +51,23 @@ void BodyNode<T>::CalcArticulatedBodyHingeInertiaMatrixFactorization(
   if (llt_D_B->eigen_linear_solver().info() != Eigen::Success) {
     // Create a meaningful message that helps the user as much as possible.
     const Mobilizer<T>& mobilizer = get_mobilizer();
-    const Body<T>& inboard_body = mobilizer.inboard_body();
-    const Body<T>& outboard_body = mobilizer.outboard_body();
-    const std::string& inboard_body_name = inboard_body.name();
-    const std::string& outboard_body_name = outboard_body.name();
+    const Link<T>& inboard_link = mobilizer.inboard_body();
+    const Link<T>& outboard_link = mobilizer.outboard_body();
+    const std::string& inboard_link_name = inboard_link.name();
+    const std::string& outboard_link_name = outboard_link.name();
     std::stringstream message;
     message << "An internal mass matrix associated with the joint that "
-               "connects body " << inboard_body_name << " to body "
-               << outboard_body_name << " is not positive-definite.";
+               "connects link " << inboard_link_name << " to link "
+               << outboard_link_name << " is not positive-definite.";
     if (mobilizer.can_rotate()) {
-      message << " Since the joint allows rotation, ensure body "
-              << outboard_body_name << " (combined with other outboard bodies) "
+      message << " Since the joint allows rotation, ensure link "
+              << outboard_link_name << " (combined with other outboard bodies) "
                  "has reasonable non-zero moments of inertia about the joint "
                  "rotation axes.";
     }
     if (mobilizer.can_translate()) {
-      message << " Since the joint allows translation, ensure body "
-              << outboard_body_name << " (combined with other outboard bodies) "
+      message << " Since the joint allows translation, ensure link "
+              << outboard_link_name << " (combined with other outboard bodies) "
                  "has a reasonable non-zero mass.";
     }
     throw std::runtime_error(message.str());

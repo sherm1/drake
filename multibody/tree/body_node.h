@@ -25,46 +25,55 @@ namespace drake {
 namespace multibody {
 namespace internal {
 
-// For internal use only of the MultibodyTree implementation.
-// This is a base class representing a **node** in the tree structure of a
-// MultibodyTree. %BodyNode provides implementations for convenience methods to
-// be used in MultibodyTree recursive algorithms but that however should not
-// leak into the public API for the Mobilizer class. In this regard, %BodyNode
-// provides an additional separation layer between implementation internals and
-// user facing API.
+// For internal use only of the MultibodyTree implementation. This class
+// represents a **node** in the forest structure of a MultibodyTree. Together
+// with its associated Mobilizer, the (BodyNode, Mobilizer) pair constitutes a
+// "mobilized body" in the multibody forest. BodyNode provides implementations
+// for convenience methods to be used in MultibodyTree recursive algorithms.
 //
-// <h4>Tree Structure</h4>
+// Forest Structure
 //
-// As a tree data structure, a MultibodyTree can be thought of as collection of
-// %BodyNode objects where each body node has a number of %BodyNode children
-// and a unique parent %BodyNode object.
-// Each %BodyNode is associated with a given body B and an inboard mobilizer
-// that connects this body B to the rest of the tree. The unique parent body of
-// body B is denoted by P, which in turn has its own %BodyNode associated with
-// it. Associated with each %BodyNode is an inboard frame F attached on body P
-// and an outboard frame M attached to body B. The relationship between frames
-// F and M is dictated by the body B's inboard mobilizer providing the pose
-// `X_FM` as a function of the generalized coordinates associated with that
-// mobilizer.
+// The forest data structure of a MultibodyTree can be thought of as a set of
+// directed trees, each of which is a collection of BodyNode objects where each
+// body node has a number of BodyNode children and a unique parent BodyNode
+// object. Each BodyNode is associated with a given body B and an inboard
+// mobilizer that connects this body B to the rest of its tree. The unique
+// parent body of body B is denoted by P, which in turn has its own BodyNode.
+// Associated with each BodyNode is an inboard frame F attached to body P and an
+// outboard frame M attached to body B. The relationship between frames F and M
+// is dictated by body B's inboard mobilizer providing the pose X_FM as a
+// function of the generalized coordinates associated with that mobilizer.
 //
-// In summary, there will a %BodyNode for each Body in the MultibodyTree which
+// NOTE: the "body" of a mobilized body is related to, but distinct from, a
+// user's "link" as specified in an input file (e.g. sdf or urdf) or added
+// directly to the MultibodyPlant. A body may be a "composite body", consisting
+// of a collection of welded-together links, or may have been added during
+// modeling for loop-splitting. In comments and code here, "body" means
+// mobilized body and should not be considered synonymous with "link".
+//
+// TODO(sherm1) Composite bodies are not yet enabled; the code here treats
+//  the connecting links identically to bodies. Fix that.
+//
+// Similarly, a "mobilizer" is related to, but distinct from a user's "joint".
+// In particular, the user's notion of "parent" and "child" for a joint may be
+// reversed from the mobilizer's notion of "inboard" and "outboard". However,
+// when working internally with the tree structure we often succumb to
+// convention and use parent/child to mean inboard/outboard; apologies.
+//
+// In summary, there will a BodyNode for each body in the MultibodyTree which
 // encompasses:
-//
-// - a body B in a given MultibodyTree,
+// - a body B in the forest model of a MultibodyPlant's links and joints,
 // - the outboard frame M attached to this body B,
 // - the inboard frame F attached to the unique parent body P of body B,
 // - the mobilizer connecting the inboard frame F with the outboard frame M.
 //
-// <h4>Associated State</h4>
+// Associated State
 //
-// In the same way a Mobilizer and a Body have a number of generalized
-// positions associated with them, a %BodyNode is associated with the
-// generalized positions of body B and of its inboard mobilizer.
-//
-// The relationship between frames F and M is dictated by the body B's inboard
-// mobilizer providing the pose `X_FM(q_B)` as a function of the generalized
-// coordinates `q_B` (where `_B` means these are the q's for just the unique
-// inboard mobilizer of body B.)
+// Generalized positions q_B and velocities v_B are allocated as required by a
+// BodyNode B's inboard Mobilizer. The relationship between frames F and M is
+// dictated by B's inboard mobilizer providing the pose X_FM(q_B) as a function
+// of the generalized coordinates q_B (where _B means these are the q's for just
+// the unique inboard mobilizer of mobilized body B.
 //
 // @tparam_default_scalar
 template <typename T>
@@ -72,45 +81,41 @@ class BodyNode : public MultibodyElement<T> {
  public:
   DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(BodyNode)
 
-  // A node encompasses a Body in a MultibodyTree and the inboard Mobilizer
-  // that connects this body to the rest of tree. Given a body and its inboard
+  // A node encompasses a body in a MultibodyTree and the inboard Mobilizer
+  // that connects that body to the rest of tree. Given a body and its inboard
   // mobilizer in a MultibodyTree this constructor creates the corresponding
-  // %BodyNode. See this class' documentation for details on how a %BodyNode is
+  // BodyNode. See the class documentation for details on how a BodyNode is
   // defined.
   // @param[in] parent_node
   //   A const pointer to the parent BodyNode object in the tree structure of
-  //   the owning MultibodyTree. It can be a `nullptr` only when `body` **is**
-  //   the **world** body, otherwise this constructor will abort.
-  // @param[in] body
-  //   The body B associated with `this` node.
+  //   the owning MultibodyTree. It can be a nullptr only when `link` is
+  //   part of the **world** body, otherwise this constructor will abort.
+  // @param[in] link
+  //   The link on body B to which the inboard mobilizer's M frame is attached.
   // @param[in] mobilizer
-  //   The mobilizer associated with this `node`. It can be a `nullptr` only
-  //   when `body` **is** the **world** body, otherwise this method will abort.
+  //   The mobilizer associated with this node. It can be a nullptr only
+  //   when `body` is the **world** body, otherwise this method will abort.
   //
-  // @note %BodyNode keeps a reference to the parent body, body and mobilizer
-  // for this node, which must outlive `this` BodyNode.
+  // @note BodyNode keeps a reference to the parent body, link and mobilizer
+  // for this node, which must outlive this BodyNode.
   //
   // Reference used below:
   // - [Jain 2010]  Jain, A., 2010. Robot and multibody dynamics: analysis and
   //                algorithms. Springer Science & Business Media.
-  BodyNode(const BodyNode<T>* parent_node,
-           const Body<T>* body, const Mobilizer<T>* mobilizer)
-      : MultibodyElement<T>(body->model_instance()),
+  BodyNode(const BodyNode<T>* parent_node, const Link<T>* link,
+           const Mobilizer<T>* mobilizer)
+      : MultibodyElement<T>(link->model_instance()),
         parent_node_(parent_node),
-        body_(body),
+        link_(link),
         mobilizer_(mobilizer) {
-    DRAKE_DEMAND(!(parent_node == nullptr &&
-        body->index() != world_index()));
-    DRAKE_DEMAND(!(mobilizer == nullptr && body->index() != world_index()));
+    DRAKE_DEMAND(!(parent_node == nullptr && link->index() != world_index()));
+    DRAKE_DEMAND(!(mobilizer == nullptr && link->index() != world_index()));
   }
 
-  // Method to update the list of child body nodes maintained by this node,
-  // outboard to this node. Recall a %BodyNode is a tree node within the tree
-  // structure of MultibodyTree. Therefore each %BodyNode has a unique parent
-  // %BodyNode, supplied at construction, and a set of child nodes, specified
-  // via calls to this method.
-  // Used by MultibodyTree at creation of a BodyNode during the
-  // MultibodyTree::Finalize() method call.
+  // Method to update the list of outboard ("child") body nodes maintained by
+  // this node. Because of the directed forest structure of the multibody
+  // model, each BodyNode has a unique inboard ("parent") BodyNode, supplied at
+  // construction, and a set of child nodes, specified via calls to this method.
   void add_child_node(const BodyNode<T>* child) {
     children_.push_back(child);
   }
@@ -120,29 +125,30 @@ class BodyNode : public MultibodyElement<T> {
     return this->template index_impl<MobodIndex>();
   }
 
-  // Returns a constant reference to the body B associated with this node.
-  const Body<T>& body() const {
-    DRAKE_ASSERT(body_ != nullptr);
-    return *body_;
+  // Returns a constant reference to the connecting link of the body B
+  // associated with this node. That is, this is the link to which the
+  // inboard mobilizer's frame M is attached.
+  const Link<T>& link() const {
+    DRAKE_ASSERT(link_ != nullptr);
+    return *link_;
   }
 
-  // Returns a constant reference to the unique parent body P of the body B
-  // associated with this node. This method aborts in Debug builds if called on
-  // the root node corresponding to the _world_ body.
-  const Body<T>& parent_body() const {
-    DRAKE_ASSERT(get_parent_body_index().is_valid());
-    return this->get_parent_tree().get_body(get_parent_body_index());
+  // Returns a const reference to the connecting link on this body's parent
+  // body P. That is, this is the link on the parent body to which the
+  // inboard mobilizer's frame F is attached. Don't call this on World.
+  const Link<T>& parent_link() const {
+    DRAKE_ASSERT(get_parent_link_index().is_valid());
+    return this->get_parent_tree().get_link(get_parent_link_index());
   }
 
   // Returns a const pointer to the parent (inboard) body node or nullptr if
-  // `this` is the world node, which has no inboard parent node.
+  // this is the world node, which has no inboard parent node.
   const BodyNode<T>* parent_body_node() const {
     return parent_node_;
   }
 
-  // Returns a constant reference to the mobilizer associated with this node.
-  // Aborts if called on the root node corresponding to the _world_ body, for
-  // which there is no mobilizer.
+  // Returns a const reference to the mobilizer associated with this node.
+  // Don't call this on World.
   const Mobilizer<T>& get_mobilizer() const {
     DRAKE_DEMAND(mobilizer_ != nullptr);
     return *mobilizer_;
@@ -151,21 +157,20 @@ class BodyNode : public MultibodyElement<T> {
   // @name Methods to retrieve BodyNode sizes
   //@{
 
-  // Returns the number of generalized positions for the Mobilizer in `this`
-  // node.
+  // Returns the number of generalized positions q_B for this node B's
+  // mobilizer.
   int get_num_mobilizer_positions() const {
     return topology_.num_mobilizer_positions;
   }
 
-  // Returns the number of generalized velocities for the Mobilizer in `this`
-  // node.
+  // Returns the number of generalized velocities v_B for this node B's
+  // mobilizer.
   int get_num_mobilizer_velocities() const {
     return topology_.num_mobilizer_velocities;
   }
 
-  // Returns the index to the first generalized velocity for this node
-  // within the vector v of generalized velocities for the full multibody
-  // system.
+  // Returns the index to the first generalized velocity for this node within
+  // the vector v of generalized velocities for the full multibody system.
   int velocity_start_in_v() const {
     return topology_.mobilizer_velocities_start_in_v;
   }
@@ -187,11 +192,10 @@ class BodyNode : public MultibodyElement<T> {
       const systems::Context<T>& context,
       PositionKinematicsCache<T>* pc) const {
     // This method must not be called for the "world" body node.
-    DRAKE_ASSERT(topology_.body != world_index());
-
+    DRAKE_ASSERT(topology_.link != world_index());
     DRAKE_ASSERT(pc != nullptr);
 
-    // Update mobilizer' position dependent kinematics.
+    // Update mobilizer's position dependent kinematics.
     CalcAcrossMobilizerPositionKinematicsCache(context, pc);
 
     // This computes into the PositionKinematicsCache:
@@ -204,16 +208,16 @@ class BodyNode : public MultibodyElement<T> {
     CalcAcrossMobilizerBodyPoses_BaseToTip(context, pc);
 
     // TODO(amcastro-tri):
-    // Update Body specific kinematics. These include:
-    // - p_PB_W: vector from P to B to perform shift operations.
-    // - com_W: center of mass.
-    // - M_Bo_W: Spatial inertia.
+    //  Update Body specific kinematics. These include:
+    //  - p_PB_W: vector from P to B to perform shift operations.
+    //  - com_W: center of mass.
+    //  - M_Bo_W: Spatial inertia.
 
     // TODO(amcastro-tri):
-    // With H_FM(q) already in the cache (computed by
-    // Mobilizer::UpdatePositionKinematicsCache()) update the cache entries for
-    // H_PB_W, the hinge matrix for the SpatialVelocity jump between body B and
-    // its parent body P expressed in the world frame W.
+    //  With H_FM(q) already in the cache (computed by
+    //  Mobilizer::UpdatePositionKinematicsCache()) update the cache entries for
+    //  H_PB_W, the hinge matrix for the SpatialVelocity jump between body B and
+    //  its parent body P expressed in the world frame W.
   }
 
   // This method is used by MultibodyTree within a base-to-tip loop to compute
@@ -245,8 +249,7 @@ class BodyNode : public MultibodyElement<T> {
       const Eigen::Ref<const MatrixUpTo6<T>>& H_PB_W,
       VelocityKinematicsCache<T>* vc) const {
     // This method must not be called for the "world" body node.
-    DRAKE_ASSERT(topology_.body != world_index());
-
+    DRAKE_ASSERT(topology_.link != world_index());
     DRAKE_ASSERT(vc != nullptr);
     DRAKE_DEMAND(H_PB_W.rows() == 6);
     DRAKE_DEMAND(H_PB_W.cols() == get_num_mobilizer_velocities());
@@ -384,7 +387,7 @@ class BodyNode : public MultibodyElement<T> {
       const VectorX<T>& mbt_vdot,
       std::vector<SpatialAcceleration<T>>* A_WB_array_ptr) const {
     // This method must not be called for the "world" body node.
-    DRAKE_DEMAND(topology_.body != world_index());
+    DRAKE_DEMAND(topology_.link != world_index());
     DRAKE_DEMAND(A_WB_array_ptr != nullptr);
     std::vector<SpatialAcceleration<T>>& A_WB_array = *A_WB_array_ptr;
 
@@ -438,18 +441,18 @@ class BodyNode : public MultibodyElement<T> {
 
     // Body for this node. Its body frame is also referred to as B whenever no
     // ambiguity can arise.
-    const Body<T>& body_B = body();
+    const Link<T>& link_B = link();
 
     // Body for this node's parent, or the parent body P. Its body frame is
     // also referred to as P whenever no ambiguity can arise.
-    const Body<T>& body_P = parent_body();
+    const Link<T>& link_P = parent_link();
 
     // Inboard frame F of this node's mobilizer.
     const Frame<T>& frame_F = inboard_frame();
-    DRAKE_ASSERT(frame_F.body().index() == body_P.index());
+    DRAKE_ASSERT(frame_F.body().index() == link_P.index());
     // Outboard frame M of this node's mobilizer.
     const Frame<T>& frame_M = outboard_frame();
-    DRAKE_ASSERT(frame_M.body().index() == body_B.index());
+    DRAKE_ASSERT(frame_M.body().index() == link_B.index());
 
     // =========================================================================
     // Computation of A_PB = DtP(V_PB), Eq. (4).
@@ -660,7 +663,7 @@ class BodyNode : public MultibodyElement<T> {
     // before the projection can be performed.
 
     // This node's body B.
-    const Body<T>& body_B = body();
+    const Link<T>& link_B = link();
 
     // Input spatial acceleration for this node's body B.
     const SpatialAcceleration<T>& A_WB = get_A_WB_from_array(A_WB_array);
@@ -672,7 +675,7 @@ class BodyNode : public MultibodyElement<T> {
 
     // Compute shift vector from Bo to Mo expressed in the world frame W.
     const Frame<T>& frame_M = outboard_frame();
-    DRAKE_DEMAND(frame_M.body().index() == body_B.index());
+    DRAKE_DEMAND(frame_M.body().index() == link_B.index());
     const math::RigidTransform<T> X_BM = frame_M.CalcPoseInBodyFrame(context);
     const Vector3<T>& p_BoMo_B = X_BM.translation();
     const math::RigidTransform<T>& X_WB = get_X_WB(pc);
@@ -776,7 +779,7 @@ class BodyNode : public MultibodyElement<T> {
       const PositionKinematicsCache<T>& pc,
       EigenPtr<MatrixX<T>> H_PB_W) const {
     // Checks on the input arguments.
-    DRAKE_DEMAND(topology_.body != world_index());
+    DRAKE_DEMAND(topology_.link != world_index());
     DRAKE_DEMAND(H_PB_W != nullptr);
     DRAKE_DEMAND(H_PB_W->rows() == 6);
     DRAKE_DEMAND(H_PB_W->cols() == get_num_mobilizer_velocities());
@@ -905,7 +908,7 @@ class BodyNode : public MultibodyElement<T> {
       const SpatialInertia<T>& M_B_W,
       const VectorX<T>& diagonal_inertias,
       ArticulatedBodyInertiaCache<T>* abic) const {
-    DRAKE_THROW_UNLESS(topology_.body != world_index());
+    DRAKE_THROW_UNLESS(topology_.link != world_index());
     DRAKE_THROW_UNLESS(abic != nullptr);
     DRAKE_THROW_UNLESS(diagonal_inertias.size() ==
                        this->get_parent_tree().num_velocities());
@@ -1103,7 +1106,7 @@ class BodyNode : public MultibodyElement<T> {
       const Eigen::Ref<const VectorX<T>>& tau_applied,
       const Eigen::Ref<const MatrixUpTo6<T>>& H_PB_W,
       ArticulatedBodyForceCache<T>* aba_force_cache) const {
-    DRAKE_THROW_UNLESS(topology_.body != world_index());
+    DRAKE_THROW_UNLESS(topology_.link != world_index());
     DRAKE_THROW_UNLESS(aba_force_cache != nullptr);
 
     // As a guideline for developers, please refer to @ref
@@ -1255,7 +1258,7 @@ class BodyNode : public MultibodyElement<T> {
       const PositionKinematicsCache<T>& pc,
       const std::vector<SpatialInertia<T>>& Mc_B_W_all,
       SpatialInertia<T>* Mc_B_W) const {
-    DRAKE_THROW_UNLESS(topology_.body != world_index());
+    DRAKE_THROW_UNLESS(topology_.link != world_index());
     DRAKE_THROW_UNLESS(Mc_B_W != nullptr);
 
     // Composite body inertia R_B_W for this node B, about its frame's origin
@@ -1396,11 +1399,12 @@ class BodyNode : public MultibodyElement<T> {
  private:
   friend class BodyNodeTester;
 
-  // Returns the index to the parent body of the body associated with this node.
-  // For the root node, corresponding to the world body, this method returns an
-  // invalid body index. Attempts to using invalid indexes leads to an exception
-  // being thrown in Debug builds.
-  LinkIndex get_parent_body_index() const { return topology_.parent_body;}
+  // Returns the LinkIndex of the connecting link on the parent body P. The
+  // connecting link is the link on P to which B's inboard mobilizer's F frame
+  // is attached. For the root node, corresponding to the world body, this
+  // method returns an invalid link index. Attempts to use invalid indexes lead
+  // to an exception being thrown in Debug builds.
+  LinkIndex get_parent_link_index() const { return topology_.parent_link;}
 
   // =========================================================================
   // Helpers to access the state.
@@ -1413,10 +1417,10 @@ class BodyNode : public MultibodyElement<T> {
   }
 
   // Helper to get an Eigen expression of the vector of generalized velocities
-  // from a vector of generalized velocities for the entire parent multibody
-  // tree. Useful for the implementation of operator forms where the generalized
-  // velocity (or time derivatives of the generalized velocities) is an argument
-  // to the operator.
+  // v_B from a vector v of generalized velocities for the entire multibody
+  // forest. Useful for the implementation of operator forms where the
+  // generalized velocity (or time derivatives of the generalized velocities) is
+  // an argument to the operator.
   Eigen::VectorBlock<const VectorX<T>> get_mobilizer_velocities(
       const VectorX<T>& v) const {
     return v.segment(topology_.mobilizer_velocities_start_in_v,
@@ -1426,8 +1430,8 @@ class BodyNode : public MultibodyElement<T> {
   // =========================================================================
   // PositionKinematicsCache Accessors and Mutators.
 
-  // Returns a const reference to the pose of the body B associated with this
-  // node as measured and expressed in the world frame W.
+  // Returns a const reference to the pose of mobilized body B associated with
+  // this node as measured and expressed in the world frame W.
   const math::RigidTransform<T>& get_X_WB(
       const PositionKinematicsCache<T>& pc) const {
     return pc.get_X_WB(topology_.index);
@@ -1439,14 +1443,14 @@ class BodyNode : public MultibodyElement<T> {
     return pc->get_mutable_X_WB(topology_.index);
   }
 
-  // Returns a const reference to the pose of the parent body P measured and
-  // expressed in the world frame W.
+  // Returns a const reference to the pose of this mobilized body's parent
+  // body P measured and expressed in the world frame W.
   const math::RigidTransform<T>& get_X_WP(
       const PositionKinematicsCache<T>& pc) const {
     return pc.get_X_WB(topology_.parent_body_node);
   }
 
-  // Returns a const reference to the rotation matrix `R_WP` that relates the
+  // Returns a const reference to the rotation matrix R_WP that relates the
   // orientation of the world frame W to the parent frame P.
   const math::RotationMatrix<T>& get_R_WP(
       const PositionKinematicsCache<T>& pc) const {
@@ -1460,31 +1464,32 @@ class BodyNode : public MultibodyElement<T> {
     return pc.get_X_FM(topology_.index);
   }
 
-  // Returns a mutable reference to the across-mobilizer pose of the outboard
-  // frame M as measured and expressed in the inboard frame F.
+  // Mutable version of get_X_FM().
   math::RigidTransform<T>& get_mutable_X_FM(
       PositionKinematicsCache<T>* pc) const {
     return pc->get_mutable_X_FM(topology_.index);
   }
 
-  // Returns a const reference to the pose of body B as measured and expressed
-  // in the frame of the parent body P.
+  // Returns a const reference to the pose of this mobilized body B as measured
+  // and expressed in the frame of its parent body P.
   const math::RigidTransform<T>& get_X_PB(
       const PositionKinematicsCache<T>& pc) const {
     return pc.get_X_PB(topology_.index);
   }
 
-  // Returns a mutable reference to the pose of body B as measured and expressed
-  // in the frame of the parent body P.
+  // Mutable version of get_X_PB().
   math::RigidTransform<T>& get_mutable_X_PB(
       PositionKinematicsCache<T>* pc) const {
     return pc->get_mutable_X_PB(topology_.index);
   }
 
+  // For this mobilized body B, return the vector from its parent body P's
+  // origin Po to Bo, expressed in the world frame.
   const Vector3<T>& get_p_PoBo_W(const PositionKinematicsCache<T>& pc) const {
     return pc.get_p_PoBo_W(topology_.index);
   }
 
+  // Mutable version of get_p_PoBo_W().
   Vector3<T>& get_mutable_p_PoBo_W(PositionKinematicsCache<T>* pc) const {
     return pc->get_mutable_p_PoBo_W(topology_.index);
   }
@@ -1492,8 +1497,8 @@ class BodyNode : public MultibodyElement<T> {
   // =========================================================================
   // VelocityKinematicsCache Accessors and Mutators.
 
-  // For the body B associated with this node, return V_WB, B's spatial velocity
-  // in the world frame W, expressed in W (for Bo, the body frame's origin).
+  // For this mobilized body B, return V_WB, B's spatial velocity
+  // in the world frame W, expressed in W (for Bo, the body's origin).
   const SpatialVelocity<T>& get_V_WB(
       const VelocityKinematicsCache<T>& vc) const {
     return vc.get_V_WB(topology_.index);
@@ -1504,14 +1509,14 @@ class BodyNode : public MultibodyElement<T> {
     return vc->get_mutable_V_WB(topology_.index);
   }
 
-  // Returns the spatial velocity `V_WP` of the body frame P in the parent node
-  // as measured and expressed in the world frame.
+  // Returns a const reference to the spatial velocity V_WP of this mobilized
+  // body's parent body P, measured and expressed in the world frame.
   const SpatialVelocity<T>& get_V_WP(
       const VelocityKinematicsCache<T>& vc) const {
     return vc.get_V_WB(topology_.parent_body_node);
   }
 
-  // Returns a const reference to the across-mobilizer spatial velocity `V_FM`
+  // Returns a const reference to the across-mobilizer spatial velocity V_FM
   // of the outboard frame M in the inboard frame F, expressed in the F frame.
   const SpatialVelocity<T>& get_V_FM(
       const VelocityKinematicsCache<T>& vc) const {
@@ -1524,8 +1529,8 @@ class BodyNode : public MultibodyElement<T> {
     return vc->get_mutable_V_FM(topology_.index);
   }
 
-  // Returns a const reference to the spatial velocity `V_PB_W` of `this`
-  // node's body B in the parent node's body P, expressed in the world frame W.
+  // Returns a const reference to the spatial velocity V_PB_W of this
+  // node's link B in the parent node's link P, expressed in the world frame W.
   const SpatialVelocity<T>& get_V_PB_W(
       const VelocityKinematicsCache<T>& vc) const {
     return vc.get_V_PB_W(topology_.index);
@@ -1540,9 +1545,9 @@ class BodyNode : public MultibodyElement<T> {
   // =========================================================================
   // AccelerationKinematicsCache Accessors and Mutators.
 
-  // For the body B associated with `this` node, returns A_WB, body B's
-  // spatial acceleration in the world frame W, expressed in W
-  // (for point Bo, the body's origin).
+  // For body B associated with this node, returns A_WB, body B's spatial
+  // acceleration in the world frame W, expressed in W (for point Bo, the link's
+  // origin).
   const SpatialAcceleration<T>& get_A_WB(
       const AccelerationKinematicsCache<T>& ac) const {
     return ac.get_A_WB(topology_.index);
@@ -1554,8 +1559,8 @@ class BodyNode : public MultibodyElement<T> {
     return ac->get_mutable_A_WB(topology_.index);
   }
 
-  // Returns a const reference to the spatial acceleration `A_WP` of the body
-  // frame P in the parent node as measured and expressed in the world frame.
+  // Returns a const reference to the spatial acceleration A_WP of body
+  // P in the parent node as measured and expressed in the world frame.
   const SpatialAcceleration<T>& get_A_WP(
       const AccelerationKinematicsCache<T>& ac) const {
     return ac.get_A_WB(topology_.parent_body_node);
@@ -1573,8 +1578,8 @@ class BodyNode : public MultibodyElement<T> {
   // =========================================================================
   // ArticulatedBodyInertiaCache Accessors and Mutators.
 
-  // Returns a const reference to the articulated body inertia `P_B_W` of the
-  // body taken about Bo and expressed in W.
+  // Returns a const reference to the articulated body inertia P_B_W of this
+  // node's body B taken about Bo and expressed in W.
   const ArticulatedBodyInertia<T>& get_P_B_W(
       const ArticulatedBodyInertiaCache<T>& abic) const {
     return abic.get_P_B_W(topology_.index);
@@ -1586,7 +1591,7 @@ class BodyNode : public MultibodyElement<T> {
     return abic->get_mutable_P_B_W(topology_.index);
   }
 
-  // Returns a const reference to the articulated body inertia `Pplus_PB_W`,
+  // Returns a const reference to the articulated body inertia Pplus_PB_W,
   // which can be thought of as the articulated body inertia of parent body P
   // as though it were inertialess, but taken about Bo and expressed in W.
   const ArticulatedBodyInertia<T>& get_Pplus_PB_W(
@@ -1600,7 +1605,7 @@ class BodyNode : public MultibodyElement<T> {
     return abic->get_mutable_Pplus_PB_W(topology_.index);
   }
 
-  // Returns a const reference to the LLT factorization `llt_D_B` of the
+  // Returns a const reference to the LLT factorization llt_D_B of the
   // articulated body hinge inertia.
   const math::LinearSolver<Eigen::LLT, MatrixUpTo6<T>>& get_llt_D_B(
       const ArticulatedBodyInertiaCache<T>& abic) const {
@@ -1638,8 +1643,8 @@ class BodyNode : public MultibodyElement<T> {
   // ArticulatedBodyForceCache Accessors and Mutators.
 
   // Returns a const reference to the articulated body inertia residual force
-  // `Zplus_PB_W` for this body projected across its inboard mobilizer to
-  // frame P.
+  // Zplus_PB_W for this mobilized body projected across its inboard mobilizer
+  // to frame P.
   const SpatialForce<T>& get_Zplus_PB_W(
       const ArticulatedBodyForceCache<T>& aba_force_cache) const {
     return aba_force_cache.get_Zplus_PB_W(topology_.index);
@@ -1651,8 +1656,8 @@ class BodyNode : public MultibodyElement<T> {
     return aba_force_cache->get_mutable_Zplus_PB_W(topology_.index);
   }
 
-  // Returns a const reference to the Coriolis spatial acceleration `Ab_WB`
-  // for this body due to the relative velocities of body B and body P.
+  // Returns a const reference to the Coriolis spatial acceleration Ab_WB for
+  // this mobilized body due to the relative velocities of body B and body P.
   const VectorUpTo6<T>& get_e_B(
       const ArticulatedBodyForceCache<T>& aba_force_cache) const {
     return aba_force_cache.get_e_B(topology_.index);
@@ -1683,7 +1688,7 @@ class BodyNode : public MultibodyElement<T> {
     return (*A_WB_array)[topology_.index];
   }
 
-  // Returns a const reference to the spatial acceleration `A_WP` of the body
+  // Returns a const reference to the spatial acceleration A_WP of the body
   // frame P in the parent node as measured and expressed in the world frame,
   // given an array of spatial accelerations for the entire MultibodyTree model.
   const SpatialAcceleration<T>& get_A_WP_from_array(
@@ -1710,9 +1715,8 @@ class BodyNode : public MultibodyElement<T> {
                       topology_.num_mobilizer_velocities);
   }
 
-  // Helper to get an Eigen expression of the vector of generalized forces
-  // from a vector of generalized forces for the entire parent multibody
-  // tree.
+  // Helper to get an Eigen expression of the vector of generalized forces from
+  // a vector of generalized forces for the entire parent multibody tree.
   Eigen::Ref<VectorX<T>> get_mutable_generalized_forces_from_array(
       EigenPtr<VectorX<T>> tau) const {
     DRAKE_ASSERT(tau != nullptr);
@@ -1730,17 +1734,19 @@ class BodyNode : public MultibodyElement<T> {
   void CalcAcrossMobilizerBodyPoses_BaseToTip(
       const systems::Context<T>& context,
       PositionKinematicsCache<T>* pc) const {
-    // Body for this node.
-    const Body<T>& body_B = body();
+    // Connecting links for this mobilized body.
+    const Link<T>& link_B = link();
+    const Link<T>& link_P = parent_link();
 
-    // Body for this node's parent, or the parent body P.
-    const Body<T>& body_P = parent_body();
+    // TODO(sherm1) Once we support composite bodies, distinguish between the
+    //  connecting links' frames and the body frames B and P of the mobilized
+    //  bodies. (Currently they are the same.)
 
     // Inboard/Outboard frames of this node's mobilizer.
     const Frame<T>& frame_F = get_mobilizer().inboard_frame();
-    DRAKE_ASSERT(frame_F.body().index() == body_P.index());
+    DRAKE_ASSERT(frame_F.body().index() == link_P.index());
     const Frame<T>& frame_M = get_mobilizer().outboard_frame();
-    DRAKE_ASSERT(frame_M.body().index() == body_B.index());
+    DRAKE_ASSERT(frame_M.body().index() == link_B.index());
 
     // Input (const):
     // - X_PF
@@ -1753,14 +1759,14 @@ class BodyNode : public MultibodyElement<T> {
     const math::RigidTransform<T>& X_FM =
         get_X_FM(*pc);  // mobilizer.Eval_X_FM(ctx)
     const math::RigidTransform<T>& X_WP =
-        get_X_WP(*pc);  // body_P.EvalPoseInWorld(ctx)
+        get_X_WP(*pc);  // link_P.EvalPoseInWorld(ctx)
 
     // Output (updating a cache entry):
     // - X_PB(q_B)
     // - X_WB(q(W:P), q_B)
     math::RigidTransform<T>& X_PB = get_mutable_X_PB(pc);
     math::RigidTransform<T>& X_WB =
-        get_mutable_X_WB(pc);  // body_B.EvalPoseInWorld(ctx)
+        get_mutable_X_WB(pc);  // link_B.EvalPoseInWorld(ctx)
 
     // TODO(amcastro-tri): Consider logic for the common case B = M.
     //  In that case X_FB = X_FM as suggested by setting X_MB = Identity.
@@ -1780,22 +1786,22 @@ class BodyNode : public MultibodyElement<T> {
     get_mutable_p_PoBo_W(pc) = R_WP * p_PoBo_P;
   }
 
-  // Computes position dependent kinematics associated with `this` mobilizer
+  // Computes position dependent kinematics associated with this mobilizer
   // which includes:
   // - X_FM(q): The pose of the outboard frame M as measured and expressed in
   //            the inboard frame F.
   // - H_FM(q): the mobilizer hinge matrix that relates the mobilizer's
-  //            generalized velocities v to the spatial velocity `V_FM` by
-  //            `V_FM(q, v) = H_FM(q) * v`.
+  //            generalized velocities v to the spatial velocity V_FM by
+  //            V_FM(q, v) = H_FM(q) * v.
   // - Hdot_FM(q): The time derivative of H_FM which is used to computing the
   //               M's spatial acceleration in frame F, expressed in F as:
-  //               `A_FM(q, v, v̇) = H_FM(q) * v̇ + Hdot_FM(q) * v`
+  //               A_FM(q, v, v̇) = H_FM(q) * v̇ + Hdot_FM(q) * v
   // - N(q): The kinematic coupling matrix describing the relationship between
   //         the rate of change of generalized coordinates and the generalized
-  //         velocities by `q̇ = N(q) * v`.
+  //         velocities by q̇ = N(q) * v.
   //
   // This method is used by MultibodyTree to update the position kinematics
-  // quantities associated with `this` mobilizer. MultibodyTree will always
+  // quantities associated with this mobilizer. MultibodyTree will always
   // provide a valid PositionKinematicsCache pointer, otherwise this method
   // aborts in Debug builds.
   void CalcAcrossMobilizerPositionKinematicsCache(
@@ -1831,10 +1837,10 @@ class BodyNode : public MultibodyElement<T> {
     SpatialForce<T>& Ftot_BBo_W = *Ftot_BBo_W_ptr;
 
     // Body for this node.
-    const Body<T>& body_B = body();
+    const Link<T>& link_B = link();
 
     // Body B spatial inertia about Bo expressed in world W.
-    const SpatialInertia<T>& M_B_W = M_B_W_cache[body_B.mobod_index()];
+    const SpatialInertia<T>& M_B_W = M_B_W_cache[link_B.mobod_index()];
 
     // Equations of motion for a rigid body written at a generic point Bo not
     // necessarily coincident with the body's center of mass. This corresponds
@@ -1844,7 +1850,7 @@ class BodyNode : public MultibodyElement<T> {
     // If velocities are zero, then Fb_Bo_W is zero and does not contribute.
     if (Fb_Bo_W_cache != nullptr) {
       // Dynamic bias for body B.
-      const SpatialForce<T>& Fb_Bo_W = (*Fb_Bo_W_cache)[body_B.mobod_index()];
+      const SpatialForce<T>& Fb_Bo_W = (*Fb_Bo_W_cache)[link_B.mobod_index()];
       Ftot_BBo_W += Fb_Bo_W;
     }
   }
@@ -1862,7 +1868,7 @@ class BodyNode : public MultibodyElement<T> {
   std::vector<const BodyNode<T>*> children_;
 
   // Pointers for fast access.
-  const Body<T>* body_;
+  const Link<T>* link_;
   const Mobilizer<T>* mobilizer_{nullptr};
 };
 

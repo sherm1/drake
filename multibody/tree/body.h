@@ -20,43 +20,37 @@
 namespace drake {
 namespace multibody {
 
-/// @cond
-// Helper macro to throw an exception within methods that should not be called
-// pre-finalize.
-#define DRAKE_BODY_THROW_IF_NOT_FINALIZED() ThrowIfNotFinalized(__func__)
-/// @endcond
-
-// Forward declaration for BodyFrame<T>.
+// Forward declaration for LinkFrame<T>.
 template<typename T> class Link;
 
-/// A %BodyFrame is a material Frame that serves as the unique reference frame
+/// A %LinkFrame is a material Frame that serves as the unique reference frame
 /// for a Link.
 ///
-/// Each Link B, has a unique body frame for which we use the same symbol B
-/// (with meaning clear from context). All properties of a body are defined with
-/// respect to its body frame, including its mass properties and attachment
+/// Each Link L, has a unique link frame for which we use the same symbol L
+/// (with meaning clear from context). All properties of a link are defined with
+/// respect to its link frame, including its mass properties and attachment
 /// locations for joints, constraints, actuators, geometry and so on. Run time
-/// motion of the body is defined with respect to the motion of its body frame.
-/// We represent a body frame by a %BodyFrame object that is created whenever a
+/// motion of the link is defined with respect to the motion of its link frame.
+/// We represent a link frame by a %LinkFrame object that is created whenever a
 /// Link is constructed and is owned by the Link.
 ///
-/// Note that the %BodyFrame associated with a body does not necessarily need to
+/// Note that the %LinkFrame associated with a link does not necessarily need to
 /// be located at its center of mass nor does it need to be aligned with the
-/// body's principal axes, although, in practice, it frequently is.
+/// link's principal axes, although, in practice, it frequently is.
 ///
-/// A %BodyFrame and Link are tightly coupled concepts; neither makes sense
-/// without the other. Therefore, a %BodyFrame instance is constructed in
+/// A %LinkFrame and Link are tightly coupled concepts; neither makes sense
+/// without the other. Therefore, a %LinkFrame instance is constructed in
 /// conjunction with its Link and cannot be constructed anywhere else. However,
-/// you can still access the frame associated with a body, see
-/// Link::body_frame(). This access is more than a convenience; you can use the
-/// %BodyFrame to define other frames on the body and to attach other multibody
+/// you can still access the frame associated with a link, see
+/// Link::link_frame(). This access is more than a convenience; you can use the
+/// %LinkFrame to define other frames on the link and to attach other multibody
 /// elements to it.
 ///
 /// @tparam_default_scalar
 template <typename T>
-class BodyFrame final : public Frame<T> {
+class LinkFrame final : public Frame<T> {
  public:
-  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(BodyFrame)
+  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(LinkFrame)
 
   math::RigidTransform<T> CalcPoseInBodyFrame(
       const systems::Context<T>&) const override {
@@ -110,19 +104,19 @@ class BodyFrame final : public Frame<T> {
       const internal::MultibodyTree<symbolic::Expression>&) const override;
 
  private:
-  // Link<T> and BodyFrame<T> are natural allies. A BodyFrame object is created
+  // Link<T> and LinkFrame<T> are natural allies. A LinkFrame object is created
   // every time a Link object is created and they are associated with each
   // other.
   friend class Link<T>;
 
-  // Make BodyFrame templated on any other scalar type a friend of
-  // BodyFrame<T> so that CloneToScalar<ToAnyOtherScalar>() can access
-  // private methods from BodyFrame<T>.
-  template <typename> friend class BodyFrame;
+  // Make LinkFrame templated on any other scalar type a friend of
+  // LinkFrame<T> so that CloneToScalar<ToAnyOtherScalar>() can access
+  // private methods from LinkFrame<T>.
+  template <typename> friend class LinkFrame;
 
-  // Only Link objects can create BodyFrame objects since Link is a friend of
-  // BodyFrame.
-  explicit BodyFrame(const Link<T>& body) : Frame<T>(body.name(), body) {}
+  // Only Link objects can create LinkFrame objects since Link is a friend of
+  // LinkFrame.
+  explicit LinkFrame(const Link<T>& link) : Frame<T>(link.name(), link) {}
 
   // Helper method to make a clone templated on any other scalar type.
   // This method holds the common implementation for the different overrides to
@@ -132,6 +126,11 @@ class BodyFrame final : public Frame<T> {
       const internal::MultibodyTree<ToScalar>& tree_clone) const;
 };
 
+/// Synonym for LinkFrame; prefer LinkFrame. This exists for backwards
+/// compatibility with earlier terminology.
+template <typename T>
+using BodyFrame = LinkFrame<T>;
+
 /// @cond
 // Internal implementation details. Users should not access implementations
 // in this namespace.
@@ -139,34 +138,38 @@ namespace internal {
 template <typename T>
 // Attorney-Client idiom to grant MultibodyTree access to a selected set of
 // private methods in Link.
-// BodyAttorney serves as a "proxy" to the Link class but only providing an
+// LinkAttorney serves as a "proxy" to the Link class but only providing an
 // interface to a selected subset of methods that should be accessible to
 // MultibodyTree. These methods are related to the construction and finalize
 // stage of the multibody system.
-class BodyAttorney {
+class LinkAttorney {
  private:
   // MultibodyTree keeps a list of mutable pointers to each of the body frames
   // in the system and therefore it needs mutable access.
   // Notice this method is private and therefore users do not have access to it
   // even in the rare event they'd attempt to peek into the "internal::"
   // namespace.
-  static BodyFrame<T>& get_mutable_body_frame(Link<T>* body) {
-    return body->get_mutable_body_frame();
+  static LinkFrame<T>& get_mutable_link_frame(Link<T>* link) {
+    return link->get_mutable_link_frame();
   }
   friend class internal::MultibodyTree<T>;
 };
 }  // namespace internal
 /// @endcond
 
+// TODO(sherm1) We took a different approach to deformable bodies so Link
+//  represents only rigid bodies. Remove the computationally-expensive fluff for
+//  deformable here and combine this and RigidLink.
+
 /// %Link provides the general abstraction of a body with an API that
 /// makes no assumption about whether a body is rigid or deformable and neither
 /// does it make any assumptions about the underlying physical model or
 /// approximation.
-/// As an element or component of a MultibodyPlant, a body is a
+/// As an element or component of a MultibodyPlant, a Link is a
 /// MultibodyElement, and therefore it has a unique index of type LinkIndex
 /// within the multibody plant it belongs to.
 ///
-/// A %Link contains a unique BodyFrame; see BodyFrame class documentation for
+/// A %Link contains a unique LinkFrame; see LinkFrame class documentation for
 /// more information.
 ///
 /// @tparam_default_scalar
@@ -178,41 +181,44 @@ class Link : public MultibodyElement<T> {
   /// Returns this element's unique index.
   LinkIndex index() const { return this->template index_impl<LinkIndex>(); }
 
-  /// Gets the `name` associated with `this` body. The name will never be empty.
+  /// Gets the `name` associated with `this` link. The name will never be empty.
   const std::string& name() const { return name_; }
 
   /// Returns scoped name of this frame. Neither of the two pieces of the name
   /// will be empty (the scope name and the element name).
   ScopedName scoped_name() const;
 
-  /// Returns a const reference to the associated BodyFrame.
-  const BodyFrame<T>& body_frame() const {
-    return body_frame_;
+  /// Returns a const reference to the associated LinkFrame.
+  const LinkFrame<T>& link_frame() const {
+    return link_frame_;
   }
 
-  /// For a floating body, lock its inboard joint. Its generalized
+  /// (Compatibility) Prefer equivalent link_frame().
+  const LinkFrame<T>& body_frame() const { return link_frame(); }
+
+  /// For a floating link, lock its inboard joint. Its generalized
   /// velocities will be 0 until it is unlocked.
-  /// @throws std::exception if this body is not a floating body.
+  /// @throws std::exception if this link is not a floating link.
   void Lock(systems::Context<T>* context) const {
     // TODO(rpoyner-tri): consider extending the design to allow locking on
-    //  non-floating bodies.
+    //  non-floating links.
     if (!is_floating()) {
       throw std::logic_error(fmt::format(
-          "Attempted to call Lock() on non-floating body {}", name()));
+          "Attempted to call Lock() on non-floating link {}", name()));
     }
     this->get_parent_tree()
         .get_mobilizer(topology_.inboard_mobilizer)
         .Lock(context);
   }
 
-  /// For a floating body, unlock its inboard joint.
-  /// @throws std::exception if this body is not a floating body.
+  /// For a floating link, unlock its inboard joint.
+  /// @throws std::exception if this link is not a floating link.
   void Unlock(systems::Context<T>* context) const {
     // TODO(rpoyner-tri): consider extending the design to allow locking on
-    //  non-floating bodies.
+    //  non-floating links.
     if (!is_floating()) {
       throw std::logic_error(fmt::format(
-          "Attempted to call Unlock() on non-floating body {}", name()));
+          "Attempted to call Unlock() on non-floating link {}", name()));
     }
     this->get_parent_tree()
         .get_mobilizer(topology_.inboard_mobilizer)
@@ -220,9 +226,9 @@ class Link : public MultibodyElement<T> {
   }
 
   /// Determines whether this %Link is currently locked to its inboard (parent)
-  /// %Link. This is not limited to floating bodies but generally
+  /// %Link. This is not limited to floating links but generally
   /// Joint::is_locked() is preferable otherwise.
-  /// @returns true if the body is locked, false otherwise.
+  /// @returns true if the link is locked, false otherwise.
   bool is_locked(const systems::Context<T>& context) const {
     return this->get_parent_tree()
         .get_mobilizer(topology_.inboard_mobilizer)
@@ -240,30 +246,31 @@ class Link : public MultibodyElement<T> {
   DRAKE_DEPRECATED("2024-03-01",  "Use mobod_index() instead.")
   internal::MobodIndex node_index() const { return mobod_index(); }
 
-  /// (Advanced) Returns `true` if `this` body is granted 6-dofs by a Mobilizer
-  /// and the parent body of this body's associated 6-dof joint is `world`.
-  /// @note A floating body is not necessarily modeled with a quaternion
+  /// (Advanced) Returns `true` if `this` link is granted 6-dofs by a Mobilizer
+  /// and the parent mobilized body of this link's associated 6-dof joint is
+  /// the World body.
+  /// @note A floating link is not necessarily modeled with a quaternion
   /// mobilizer, see has_quaternion_dofs(). Alternative options include a space
   /// XYZ parametrization of rotations, see SpaceXYZMobilizer.
   /// @throws std::exception if called pre-finalize,
   /// @see MultibodyPlant::Finalize()
   bool is_floating() const {
-    DRAKE_BODY_THROW_IF_NOT_FINALIZED();
+    ThrowIfNotFinalized(__func__);
     return topology_.is_floating;
   }
 
-  /// (Advanced) If `true`, this body's generalized position coordinates q
+  /// (Advanced) If `true`, this link's generalized position coordinates q
   /// include a quaternion, which occupies the first four elements of q. Note
-  /// that this does not imply that the body is floating since it may have
+  /// that this does not imply that the link is floating since it may have
   /// fewer than 6 dofs or its inboard body could be something other than World.
   /// @throws std::exception if called pre-finalize
   /// @see is_floating(), MultibodyPlant::Finalize()
   bool has_quaternion_dofs() const {
-    DRAKE_BODY_THROW_IF_NOT_FINALIZED();
+    ThrowIfNotFinalized(__func__);
     return topology_.has_quaternion_dofs;
   }
 
-  /// (Advanced) For floating bodies (see is_floating()) this method returns the
+  /// (Advanced) For floating links (see is_floating()) this method returns the
   /// index of this %Link's first generalized position in the vector q of
   /// generalized position coordinates for a MultibodyPlant model.
   /// Positions q for this %Link are then contiguous starting at this index.
@@ -275,16 +282,16 @@ class Link : public MultibodyElement<T> {
   /// @pre `this` is a floating body
   /// @see is_floating(), has_quaternion_dofs(), MultibodyPlant::Finalize()
   int floating_positions_start() const {
-    DRAKE_BODY_THROW_IF_NOT_FINALIZED();
+    ThrowIfNotFinalized(__func__);
     DRAKE_DEMAND(is_floating());
     return topology_.floating_positions_start;
   }
 
-  /// (Advanced, Deprecated) For floating bodies (see is_floating()) this
+  /// (Advanced, Deprecated) For floating links (see is_floating()) this
   /// method returns the index of this %Link's first generalized velocity in the
   /// _full state vector_ for a MultibodyPlant model, under the dubious
   /// assumption that the state consists of [q v] concatenated.
-  /// Velocities for this body are then contiguous starting at this index.
+  /// Velocities for this link are then contiguous starting at this index.
   /// @throws std::exception if called pre-finalize
   /// @pre `this` is a floating body
   /// @see floating_velocities_start_in_v()
@@ -293,13 +300,13 @@ class Link : public MultibodyElement<T> {
                    "with [q v] concatenated, offset by num_positions() to "
                    "get to the start of v.")
   int floating_velocities_start() const {
-    DRAKE_BODY_THROW_IF_NOT_FINALIZED();
+    ThrowIfNotFinalized(__func__);
     DRAKE_DEMAND(is_floating());
     return this->get_parent_tree().num_positions() +
            topology_.floating_velocities_start_in_v;
   }
 
-  /// (Advanced) For floating bodies (see is_floating()) this method returns the
+  /// (Advanced) For floating links (see is_floating()) this method returns the
   /// index of this %Link's first generalized velocity in the vector v of
   /// generalized velocities for a MultibodyPlant model.
   /// Velocities v for this %Link are then contiguous starting at this index.
@@ -307,7 +314,7 @@ class Link : public MultibodyElement<T> {
   /// @pre `this` is a floating body
   /// @see is_floating(), MultibodyPlant::Finalize()
   int floating_velocities_start_in_v() const {
-    DRAKE_BODY_THROW_IF_NOT_FINALIZED();
+    ThrowIfNotFinalized(__func__);
     DRAKE_DEMAND(is_floating());
     return topology_.floating_velocities_start_in_v;
   }
@@ -316,10 +323,10 @@ class Link : public MultibodyElement<T> {
   /// the `k`th position in the floating base. @p position_index_in_body must
   /// be in [0, 7) if `has_quaternion_dofs()` is true, otherwise in [0, 6).
   /// @throws std::exception if called pre-finalize
-  /// @pre `this` is a floating body
+  /// @pre `this` is a floating link
   /// @see is_floating(), has_quaternion_dofs(), MultibodyPlant::Finalize()
   std::string floating_position_suffix(int position_index_in_body) const {
-    DRAKE_BODY_THROW_IF_NOT_FINALIZED();
+    ThrowIfNotFinalized(__func__);
     DRAKE_DEMAND(is_floating());
     if (has_quaternion_dofs()) {
       DRAKE_DEMAND(0 <= position_index_in_body && position_index_in_body < 7);
@@ -337,7 +344,7 @@ class Link : public MultibodyElement<T> {
   /// @pre `this` is a floating body
   /// @see is_floating(), MultibodyPlant::Finalize()
   std::string floating_velocity_suffix(int velocity_index_in_body) const {
-    DRAKE_BODY_THROW_IF_NOT_FINALIZED();
+    ThrowIfNotFinalized(__func__);
     DRAKE_DEMAND(is_floating());
     DRAKE_DEMAND(0 <= velocity_index_in_body && velocity_index_in_body < 6);
     return this->get_parent_tree().get_mobilizer(
@@ -477,7 +484,7 @@ class Link : public MultibodyElement<T> {
   Link(const std::string& name, ModelInstanceIndex model_instance)
       : MultibodyElement<T>(model_instance),
         name_(internal::DeprecateWhenEmptyName(name, "Link")),
-        body_frame_(*this) {}
+        link_frame_(*this) {}
 
   /// Called by DoDeclareParameters(). Derived classes may choose to override
   /// to declare their sub-class specific parameters.
@@ -502,24 +509,24 @@ class Link : public MultibodyElement<T> {
   ///
   /// @{
 
-  /// Clones this %Link (templated on T) to a body templated on `double`.
+  /// Clones this %Link (templated on T) to a link templated on `double`.
   virtual std::unique_ptr<Link<double>> DoCloneToScalar(
       const internal::MultibodyTree<double>& tree_clone) const = 0;
 
-  /// Clones this %Link (templated on T) to a body templated on AutoDiffXd.
+  /// Clones this %Link (templated on T) to a link templated on AutoDiffXd.
   virtual std::unique_ptr<Link<AutoDiffXd>> DoCloneToScalar(
       const internal::MultibodyTree<AutoDiffXd>& tree_clone) const = 0;
 
-  /// Clones this %Link (templated on T) to a body templated on Expression.
+  /// Clones this %Link (templated on T) to a link templated on Expression.
   virtual std::unique_ptr<Link<symbolic::Expression>> DoCloneToScalar(
       const internal::MultibodyTree<symbolic::Expression>&) const = 0;
 
   /// @}
 
  private:
-  // Only friends of BodyAttorney (i.e. MultibodyTree) have access to a selected
+  // Only friends of LinkAttorney (i.e. MultibodyTree) have access to a selected
   // set of private Link methods.
-  friend class internal::BodyAttorney<T>;
+  friend class internal::LinkAttorney<T>;
 
   // Helper method for throwing an exception within public methods that should
   // not be called pre-finalize. The invoking method should pass its name so
@@ -528,18 +535,18 @@ class Link : public MultibodyElement<T> {
     if (!this->get_parent_tree().topology_is_valid()) {
       throw std::runtime_error(
           "From '" + std::string(source_method) + "'. "
-          "The model to which this body belongs must be finalized. See "
+          "The model to which this link belongs must be finalized. See "
           "MultibodyPlant::Finalize().");
     }
   }
 
   // Implementation for MultibodyElement::DoSetTopology().
-  // At MultibodyTree::Finalize() time, each body retrieves its topology
+  // At MultibodyTree::Finalize() time, each link retrieves its topology
   // from the parent MultibodyTree.
   void DoSetTopology(
       const internal::MultibodyTreeTopology& tree_topology) final {
-    topology_ = tree_topology.get_body(this->index());
-    body_frame_.SetTopology(tree_topology);
+    topology_ = tree_topology.get_link(this->index());
+    link_frame_.SetTopology(tree_topology);
   }
 
   // Implementation for MultibodyElement::DoDeclareParameters().
@@ -553,9 +560,9 @@ class Link : public MultibodyElement<T> {
     DoSetDefaultBodyParameters(parameters);
   }
 
-  // MultibodyTree has access to the mutable BodyFrame through BodyAttorney.
-  BodyFrame<T>& get_mutable_body_frame() {
-    return body_frame_;
+  // MultibodyTree has access to the mutable LinkFrame through LinkAttorney.
+  LinkFrame<T>& get_mutable_body_frame() {
+    return link_frame_;
   }
 
   // A string identifying the body in its model.
@@ -563,11 +570,11 @@ class Link : public MultibodyElement<T> {
   // unique by MultibodyPlant's API.
   const std::string name_;
 
-  // Link frame associated with this body.
-  BodyFrame<T> body_frame_;
+  // The LinkFrame associated with this Link.
+  LinkFrame<T> link_frame_;
 
   // The internal bookkeeping topology struct used by MultibodyTree.
-  internal::BodyTopology topology_;
+  internal::LinkTopology topology_;
 };
 
 /// Synonym for Link; prefer Link. This exists for backwards
@@ -575,16 +582,8 @@ class Link : public MultibodyElement<T> {
 template <typename T>
 using Body = Link<T>;
 
-/// @cond
-// Undef macros defined at the top of the file. From the GSG:
-// "Exporting macros from headers (i.e. defining them in a header without
-// #undefing them before the end of the header) is extremely strongly
-// discouraged."
-#undef DRAKE_BODY_THROW_IF_NOT_FINALIZED
-/// @endcond
-
 }  // namespace multibody
 }  // namespace drake
 
 DRAKE_DECLARE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_SCALARS(
-    class drake::multibody::BodyFrame)
+    class drake::multibody::LinkFrame)

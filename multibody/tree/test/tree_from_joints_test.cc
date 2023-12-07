@@ -205,7 +205,7 @@ class DoublePendulumModel {
  private:
   std::unique_ptr<internal::MultibodyTreeSystem<T>> system_;
 
-  const Body<T>* world_body_{nullptr};
+  const Link<T>* world_body_{nullptr};
   // Bodies:
   const RigidBody<T>* link1_{nullptr};
   const RigidBody<T>* link2_{nullptr};

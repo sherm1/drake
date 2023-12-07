@@ -10,14 +10,14 @@ namespace multibody {
 template <typename T>
 RigidBody<T>::RigidBody(const std::string& body_name,
                         const SpatialInertia<double>& M)
-    : Body<T>(body_name, default_model_instance()),
+    : Link<T>(body_name, default_model_instance()),
       default_spatial_inertia_(M) {}
 
 template <typename T>
 RigidBody<T>::RigidBody(const std::string& body_name,
                         ModelInstanceIndex model_instance,
                         const SpatialInertia<double>& M)
-    : Body<T>(body_name, model_instance),
+    : Link<T>(body_name, model_instance),
       default_spatial_inertia_(M) {}
 
 template <typename T>

@@ -129,7 +129,7 @@ void VerifyModelBasics(const MultibodyTree<T>& model) {
   // Get links by name.
   for (const std::string& link_name : kLinkNames) {
     drake::test::LimitMalloc guard;
-    const Body<T>& link = model.GetBodyByName(link_name);
+    const Link<T>& link = model.GetBodyByName(link_name);
     EXPECT_EQ(link.name(), link_name);
   }
   DRAKE_EXPECT_THROWS_MESSAGE(
@@ -489,7 +489,7 @@ class KukaIiwaModelTests : public ::testing::Test {
   Vector3<T> CalcEndEffectorPosition(
       const MultibodyTree<T>& model_on_T,
       const Context<T>& context_on_T) const {
-    const Body<T>& linkG_on_T = model_on_T.get_variant(*end_effector_link_);
+    const Link<T>& linkG_on_T = model_on_T.get_variant(*end_effector_link_);
     Vector3<T> p_WE;
     model_on_T.CalcPointsPositions(
         context_on_T, linkG_on_T.body_frame(),
@@ -508,7 +508,7 @@ class KukaIiwaModelTests : public ::testing::Test {
       const MatrixX<T>& p_EoEi_E,
       MatrixX<T>* p_WoEi_W,
       MatrixX<T>* Jv_WEi_W) const {
-    const Body<T>& linkG_on_T = model_on_T.get_variant(*end_effector_link_);
+    const Link<T>& linkG_on_T = model_on_T.get_variant(*end_effector_link_);
     const Frame<T>& frame_E = linkG_on_T.body_frame();
     const Frame<T>& frame_W = model_on_T.world_frame();
     model_on_T.CalcJacobianTranslationalVelocity(context_on_T,
@@ -590,7 +590,7 @@ class KukaIiwaModelTests : public ::testing::Test {
   // Workspace including context and derivatives vector:
   std::unique_ptr<Context<double>> context_;
   // Non-owning pointer to the end effector link:
-  const Body<double>* end_effector_link_{nullptr};
+  const Link<double>* end_effector_link_{nullptr};
   // Non-owning pointer to a fixed pose frame on the end effector link:
   const Frame<double>* frame_H_{nullptr};
   const RigidTransform<double> X_GH_{
@@ -1443,9 +1443,9 @@ TEST_F(KukaIiwaModelTests, CalcJacobianSpatialVelocityC) {
   }
 
   // Three arbitrary frames on the robot.
-  const Body<double>& link3 = tree().GetBodyByName("iiwa_link_3");
-  const Body<double>& link5 = tree().GetBodyByName("iiwa_link_5");
-  const Body<double>& link7 = tree().GetBodyByName("iiwa_link_7");
+  const Link<double>& link3 = tree().GetBodyByName("iiwa_link_3");
+  const Link<double>& link5 = tree().GetBodyByName("iiwa_link_5");
+  const Link<double>& link7 = tree().GetBodyByName("iiwa_link_7");
 
   // An arbitrary point Q in the end effector link 7.
   const Vector3d p_L7Q = Vector3d(0.2, -0.1, 0.5);
