@@ -36,16 +36,17 @@ class MultibodyForces {
   /// (Advanced) Tree overload.
   explicit MultibodyForces(const internal::MultibodyTree<T>& model);
 
-  /// Number of bodies and number of generalized velocities overload. This
-  /// constructor is useful for constructing the MultibodyForces structure
+  /// Number of mobilized bodies and number of generalized velocities overload.
+  /// This constructor is useful for constructing the MultibodyForces structure
   /// before a MultibodyPlant has been constructed.
   MultibodyForces(int nb, int nv);
 
   /// Sets `this` to store zero forces (no applied forces).
   MultibodyForces<T>& SetZero();
 
-  /// Returns the number of bodies for which `this` force object applies.
-  /// Determined at construction from the given model MultibodyTree object.
+  /// Returns the number of mobilized bodies for which `this` force object
+  /// applies. Determined at construction from the given model MultibodyTree
+  /// object.
   int num_bodies() const { return static_cast<int>(F_B_W_.size()); }
 
   /// Returns the number of generalized velocities for the model to which these
@@ -62,8 +63,8 @@ class MultibodyForces {
   VectorX<T>& mutable_generalized_forces() { return tau_; }
 
   /// (Advanced) Returns a constant reference to the vector of spatial body
-  /// forces `F_BBo_W` on each body B in the model, at the body's frame
-  /// origin `Bo`, expressed in the world frame W.
+  /// forces `F_BBo_W` on each mobilized body B in the model, at the body's
+  /// frame origin `Bo`, expressed in the world frame W.
   /// @note Entries are ordered by MobodIndex.
   const std::vector<SpatialForce<T>>& body_forces() const { return F_B_W_; }
 
@@ -84,13 +85,13 @@ class MultibodyForces {
   bool CheckHasRightSizeForModel(const internal::MultibodyTree<T>& model) const;
 
  private:
-  // Vector holding, for each body in the MultibodyTree, the externally applied
-  // force F_Bi_W on the i-th body Bi, expressed in the world frame W.
-  // Store by MobodIndex order.
+  // Vector holding, for each mobilized body in the forest modeling a
+  // MultibodyPlant, the externally applied force F_Bi_W on the i-th
+  // mobilized body Bi, expressed in the world frame W.
+  // Store in MobodIndex order.
   std::vector<SpatialForce<T>> F_B_W_;
 
-  // Vector of generalized forces applied on each mobilizer in the
-  // MultibodyTree.
+  // Vector of generalized forces applied on each mobilizer in the forest.
   VectorX<T> tau_;
 };
 

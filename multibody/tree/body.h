@@ -561,7 +561,7 @@ class Link : public MultibodyElement<T> {
   }
 
   // MultibodyTree has access to the mutable LinkFrame through LinkAttorney.
-  LinkFrame<T>& get_mutable_body_frame() {
+  LinkFrame<T>& get_mutable_link_frame() {
     return link_frame_;
   }
 

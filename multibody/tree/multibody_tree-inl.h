@@ -218,14 +218,14 @@ const MobilizerType<T>& MultibodyTree<T>::AddMobilizer(
   mobilizer->set_parent_tree(this, mobilizer_index);
 
   // Mark free mobilized bodies as needed.
-  const LinkIndex outboard_body_index = mobilizer->outboard_body().index();
+  const LinkIndex outboard_link_index = mobilizer->outboard_body().index();
   bool is_body_floating =
       mobilizer->is_floating() &&
-      mobilizer->inboard_frame().link().index() == world_body().index();
+      mobilizer->inboard_frame().link().index() == world_link().index();
 
-  topology_.get_mutable_body(outboard_body_index).is_floating =
+  topology_.get_mutable_link(outboard_link_index).is_floating =
       is_body_floating;
-  topology_.get_mutable_body(outboard_body_index).has_quaternion_dofs =
+  topology_.get_mutable_link(outboard_link_index).has_quaternion_dofs =
       mobilizer->has_quaternion_dofs();
 
   MobilizerType<T>* raw_mobilizer_ptr = mobilizer.get();

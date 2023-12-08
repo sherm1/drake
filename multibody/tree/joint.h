@@ -181,15 +181,21 @@ class Joint : public MultibodyElement<T> {
   /// Returns the name of this joint.
   const std::string& name() const { return name_; }
 
-  /// Returns a const reference to the parent body P.
-  const Link<T>& parent_body() const {
+  /// Returns a const reference to the parent link P.
+  const Link<T>& parent_link() const {
     return frame_on_parent_.body();
   }
 
-  /// Returns a const reference to the child body B.
-  const Link<T>& child_body() const {
+  /// (Compatibility) Prefer equivalent parent_link().
+  const Link<T>& parent_body() const { return parent_link(); }
+
+  /// Returns a const reference to the child link B.
+  const Link<T>& child_link() const {
     return frame_on_child_.body();
   }
+
+  /// (Compatibility) Prefer equivalent child_link().
+  const Link<T>& child_body() const { return child_link(); }
 
   /// Returns a const reference to the frame F attached on the parent body P.
   const Frame<T>& frame_on_parent() const {

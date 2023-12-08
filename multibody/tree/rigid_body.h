@@ -21,7 +21,7 @@ namespace drake {
 namespace multibody {
 
 // TODO(sherm1) Since there are now only rigid bodies, this functionality should
-//  move to the Body base class with RigidBody removed or left as an alias for
+//  move to the Body base class with RigidLink removed or left as an alias for
 //  Body.
 
 /// The term **rigid body** implies that the deformations of the body under
@@ -35,7 +35,7 @@ namespace multibody {
 /// rigid body can be described by six coordinates and thus it is often said
 /// that a free body in space has six **degrees of freedom**. These degrees of
 /// freedom obey the Newton-Euler equations of motion. However, within a
-/// MultibodyTree, a %RigidBody is *not* free in space; instead, it is assigned
+/// MultibodyTree, a %RigidLink is *not* free in space; instead, it is assigned
 /// a limited number of degrees of freedom (0-6) with respect to its parent
 /// body in the multibody tree by its Mobilizer (also called a
 /// "tree joint" or "inboard joint"). Additional constraints on permissible
@@ -47,27 +47,27 @@ namespace multibody {
 ///
 /// @tparam_default_scalar
 template <typename T>
-class RigidBody : public Link<T> {
+class RigidLink : public Link<T> {
  public:
-  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(RigidBody)
+  DRAKE_NO_COPY_NO_MOVE_NO_ASSIGN(RigidLink)
 
-  /// Constructs a %RigidBody named `body_name` with the given default
+  /// Constructs a %RigidLink named `link_name` with the given default
   /// SpatialInertia.
   ///
-  /// @param[in] body_name
+  /// @param[in] link_name
   ///   A name associated with `this` body.
   /// @param[in] M_BBo_B
   ///   Spatial inertia of `this` body B about the frame's origin `Bo` and
   ///   expressed in the body frame B.
   /// @note See @ref multibody_spatial_inertia for details on the monogram
   /// notation used for spatial inertia quantities.
-  RigidBody(const std::string& body_name,
+  RigidLink(const std::string& link_name,
             const SpatialInertia<double>& M_BBo_B);
 
-  /// Constructs a %RigidBody named `body_name` with the given default
+  /// Constructs a %RigidLink named `link_name` with the given default
   /// SpatialInertia.
   ///
-  /// @param[in] body_name
+  /// @param[in] link_name
   ///   A name associated with `this` body.
   /// @param[in] model_instance
   ///   The model instance associated with `this` body.
@@ -76,7 +76,7 @@ class RigidBody : public Link<T> {
   ///   expressed in the body frame B.
   /// @note See @ref multibody_spatial_inertia for details on the monogram
   /// notation used for spatial inertia quantities.
-  RigidBody(const std::string& body_name,
+  RigidLink(const std::string& link_name,
             ModelInstanceIndex model_instance,
             const SpatialInertia<double>& M_BBo_B);
 
@@ -124,7 +124,7 @@ class RigidBody : public Link<T> {
 
   /// Gets this body's mass from the given context.
   /// @param[in] context contains the state of the multibody system.
-  /// @pre the context makes sense for use by `this` RigidBody.
+  /// @pre the context makes sense for use by `this` RigidLink.
   const T& get_mass(const systems::Context<T>& context) const final {
     const systems::BasicVector<T>& spatial_inertia_parameter =
         context.get_numeric_parameter(spatial_inertia_parameter_index_);
@@ -135,7 +135,7 @@ class RigidBody : public Link<T> {
   /// @param[in] context contains the state of the multibody system.
   /// @returns p_BoBcm_B position vector from Bo (this rigid body B's origin)
   /// to Bcm (B's center of mass), expressed in B.
-  /// @pre the context makes sense for use by `this` RigidBody.
+  /// @pre the context makes sense for use by `this` RigidLink.
   const Vector3<T> CalcCenterOfMassInBodyFrame(
       const systems::Context<T>& context) const final {
     const systems::BasicVector<T>& spatial_inertia_parameter =
@@ -175,7 +175,7 @@ class RigidBody : public Link<T> {
   /// origin), expressed in B. M_BBo_B contains properties related to B's mass,
   /// the position vector from Bo to Bcm (B's center of mass), and G_BBo_B
   /// (B's unit inertia about Bo expressed in B).
-  /// @pre the context makes sense for use by `this` RigidBody.
+  /// @pre the context makes sense for use by `this` RigidLink.
   SpatialInertia<T> CalcSpatialInertiaInBodyFrame(
       const systems::Context<T>& context) const override {
     const systems::BasicVector<T>& spatial_inertia_parameter =
@@ -189,7 +189,7 @@ class RigidBody : public Link<T> {
   /// @param[in] mass mass of `this` rigid body B.
   /// @note This function changes `this` body B's mass and appropriately scales
   /// I_BBo_B (B's rotational inertia about Bo, expressed in B).
-  /// @pre the context makes sense for use by `this` RigidBody.
+  /// @pre the context makes sense for use by `this` RigidLink.
   /// @throws std::exception if context is null.
   void SetMass(systems::Context<T>* context, const T& mass) const {
     DRAKE_THROW_UNLESS(context != nullptr);
@@ -210,7 +210,7 @@ class RigidBody : public Link<T> {
   /// modifying G_BBo_B (B's unit inertia about Bo, expressed in B). Since this
   /// use case is very unlikely, consider using SetSpatialInertiaInBodyFrame()
   /// or SetCenterOfMassInBodyFrameAndPreserveCentralInertia().
-  /// @pre the context makes sense for use by `this` RigidBody.
+  /// @pre the context makes sense for use by `this` RigidLink.
   /// @throws std::exception if context is null.
   /// @warning Do not use this function unless it is needed (think twice).
   // TODO(Mitiguy) Consider deprecating this function.
@@ -231,7 +231,7 @@ class RigidBody : public Link<T> {
   /// mostly near) a single point, it has **questionable** utility to generally
   /// account for inertia changes due to arbitrary center of mass changes.
   /// Consider using SetSpatialInertiaInBodyFrame() instead.
-  /// @pre the context makes sense for use by `this` RigidBody.
+  /// @pre the context makes sense for use by `this` RigidLink.
   /// @throws std::exception if context is null.
   void SetCenterOfMassInBodyFrameAndPreserveCentralInertia(
       systems::Context<T>* context,
@@ -244,7 +244,7 @@ class RigidBody : public Link<T> {
   /// origin), expressed in B. M_Bo_B contains properties related to B's mass,
   /// the position vector from Bo to Bcm (B's center of mass), and G_Bo_B
   /// (B's unit inertia about Bo expressed in B).
-  /// @pre the context makes sense for use by `this` RigidBody.
+  /// @pre the context makes sense for use by `this` RigidLink.
   /// @throws std::exception if context is null.
   void SetSpatialInertiaInBodyFrame(systems::Context<T>* context,
                                     const SpatialInertia<T>& M_Bo_B) const {
@@ -376,7 +376,7 @@ class RigidBody : public Link<T> {
   }
 
   // Implementation for Body::DoDeclareBodyParameters().
-  // RigidBody declares a single parameter for its SpatialInertia.
+  // RigidLink declares a single parameter for its SpatialInertia.
   void DoDeclareBodyParameters(
       internal::MultibodyTreeSystem<T>* tree_system) final {
     // Sets model values to dummy values to indicate that the model values are
@@ -411,7 +411,7 @@ class RigidBody : public Link<T> {
   // if changing center of mass position also changes G_BBo_B and necessitates
   // a call to SetUnitInertiaAboutBodyOrigin(). B's inertia properties can be
   // checked via CalcSpatialInertiaInBodyFrame().IsPhysicallyValid().
-  // @pre the context makes sense for use by `this` RigidBody.
+  // @pre the context makes sense for use by `this` RigidLink.
   // @throws std::exception if context is null.
   void SetCenterOfMassInBodyFrameNoModifyInertia(
       systems::Context<T>* context,
@@ -425,7 +425,7 @@ class RigidBody : public Link<T> {
   // also changes B's center of mass and necessitates a call to
   // SetCenterOfMassInBodyFrameNoModifyInertia(). B's inertia properties can be
   // checked via CalcSpatialInertiaInBodyFrame().IsPhysicallyValid().
-  // @pre the context makes sense for use by `this` RigidBody.
+  // @pre the context makes sense for use by `this` RigidLink.
   // @throws std::exception if context is null.
   void SetUnitInertiaAboutBodyOrigin(
       systems::Context<T>* context,
@@ -436,7 +436,7 @@ class RigidBody : public Link<T> {
   std::unique_ptr<Body<ToScalar>> TemplatedDoCloneToScalar(
       const internal::MultibodyTree<ToScalar>& tree_clone) const {
     unused(tree_clone);
-    return std::make_unique<RigidBody<ToScalar>>(
+    return std::make_unique<RigidLink<ToScalar>>(
         this->name(), default_spatial_inertia_);
   }
 
@@ -452,4 +452,4 @@ class RigidBody : public Link<T> {
 }  // namespace drake
 
 DRAKE_DECLARE_CLASS_TEMPLATE_INSTANTIATIONS_ON_DEFAULT_SCALARS(
-    class ::drake::multibody::RigidBody)
+    class ::drake::multibody::RigidLink)

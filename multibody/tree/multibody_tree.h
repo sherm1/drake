@@ -169,7 +169,7 @@ class MultibodyTree {
   // @param[in] name
   //   A string that identifies the new body to be added to `this` model. A
   //   std::runtime_error is thrown if a body named `name` already is part of
-  //   @p model_instance. See HasBodyNamed(), Link::name().
+  //   @p model_instance. See HasLinkNamed(), Link::name().
   // @param[in] model_instance
   //   A model instance index which this body is part of.
   // @param[in] M_BBo_B
@@ -201,7 +201,7 @@ class MultibodyTree {
   // @param[in] name
   //   A string that identifies the new body to be added to `this` model. A
   //   std::runtime_error is thrown if a body named `name` already is part of
-  //   the model in the default model instance. See HasBodyNamed(),
+  //   the model in the default model instance. See HasLinkNamed(),
   //   Link::name().
   // @param[in] M_BBo_B
   //   The SpatialInertia of the new rigid body to be added to `this` model,
@@ -554,13 +554,23 @@ class MultibodyTree {
   int num_actuators() const { return ssize(owned_actuators_); }
 
   // See MultibodyPlant method.
-  int num_mobilizers() const { return ssize(owned_mobilizers_); }
-
-  // See MultibodyPlant method.
   int num_force_elements() const { return ssize(owned_force_elements_); }
 
   // Returns the number of model instances in the MultibodyTree.
   int num_model_instances() const { return ssize(instance_name_to_index_); }
+
+  // See MultibodyPlant method.
+  int num_mobilizers() const {
+    ThrowIfNotFinalized(__func__);
+    return ssize(owned_mobilizers_);
+  }
+
+  // Returns the number of mobilized bodies in the forest model of this
+  // MultibodyPlant.
+  int num_mobods() const {
+    ThrowIfNotFinalized(__func__);
+    return topology_.num_mobods();
+  }
 
   // Returns the number of generalized positions of the model.
   int num_positions() const {
@@ -773,13 +783,13 @@ class MultibodyTree {
   //
   // @throws std::exception if the body name occurs in multiple model
   // instances.
-  bool HasBodyNamed(std::string_view name) const;
+  bool HasLinkNamed(std::string_view name) const;
 
   // @returns `true` if a body named `name` was added to @p model_instance.
   // @see AddRigidLink().
   //
   // @throws std::exception if @p model_instance is not valid for this model.
-  bool HasBodyNamed(std::string_view name,
+  bool HasLinkNamed(std::string_view name,
                     ModelInstanceIndex model_instance) const;
 
   // See MultibodyPlant method.

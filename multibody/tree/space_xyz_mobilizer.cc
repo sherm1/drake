@@ -152,12 +152,12 @@ void SpaceXYZMobilizer<T>::DoCalcNMatrix(
   if (abs(cp) < 1.0e-3) {
     throw std::runtime_error(fmt::format(
         "The SpaceXYZMobilizer (likely associated with a BallRpyJoint) between "
-        "body {} and body {} has reached a singularity. This occurs when the "
+        "link {} and link {} has reached a singularity. This occurs when the "
         "pitch angle takes values near π/2 + kπ, ∀ k ∈ ℤ. At the current "
         "configuration, we have pitch = {}. Drake does not yet support a "
         "comparable joint using quaternions, but the feature request is "
         "tracked in https://github.com/RobotLocomotion/drake/issues/12404.",
-        this->inboard_body().name(), this->outboard_body().name(), angles[1]));
+        this->inboard_link().name(), this->outboard_link().name(), angles[1]));
   }
 
   const T sp = sin(angles[1]);
@@ -272,12 +272,12 @@ void SpaceXYZMobilizer<T>::MapVelocityToQDot(
   if (abs(cp) < 1.0e-3) {
     throw std::runtime_error(fmt::format(
         "The SpaceXYZMobilizer (likely associated with a BallRpyJoint) between "
-        "body {} and body {} has reached a singularity. This occurs when the "
+        "link {} and link {} has reached a singularity. This occurs when the "
         "pitch angle takes values near π/2 + kπ, ∀ k ∈ ℤ. At the current "
         "configuration, we have pitch = {}. Drake does not yet support a "
         "comparable joint using quaternions, but the feature request is "
         "tracked in https://github.com/RobotLocomotion/drake/issues/12404.",
-        this->inboard_body().name(), this->outboard_body().name(), angles[1]));
+        this->inboard_link().name(), this->outboard_link().name(), angles[1]));
   }
 
   const T& w0 = v[0];
