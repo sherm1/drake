@@ -58,6 +58,7 @@ void SpanningForest::Mobod::Swap(Mobod& other) {
   std::swap(nq_, other.nq_);
   std::swap(v_start_, other.v_start_);
   std::swap(nv_, other.nv_);
+  std::swap(has_quaternion_, other.has_quaternion_);
   std::swap(nq_inboard_, other.nq_inboard_);
   std::swap(nv_inboard_, other.nv_inboard_);
   std::swap(nq_outboard_, other.nq_outboard_);
