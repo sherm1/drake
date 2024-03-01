@@ -74,6 +74,7 @@ SapModel<T>::SapModel(const SapContactProblem<T>* problem_ptr)
   const_model_data_.delassus_diagonal = std::move(delassus_diagonal);
 
   system_ = std::make_unique<SapModelSystem>(num_velocities());
+  system_->set_name("sap_model");
   DeclareCacheEntries();
 }
 

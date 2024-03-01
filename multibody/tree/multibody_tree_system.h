@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <memory>
 #include <set>
 #include <string>
@@ -117,6 +118,10 @@ class MultibodyTreeSystem : public systems::LeafSystem<T> {
   const internal::AccelerationKinematicsCache<T>& EvalForwardDynamics(
       const systems::Context<T>& context) const {
     this->ValidateContext(context);
+
+    std::cout << fmt::format("t={} MultibodyTreeSystem::{}\n",
+                             context.get_time(), __func__);
+
     return acceleration_kinematics_cache_entry()
         .template Eval<AccelerationKinematicsCache<T>>(context);
   }
@@ -472,6 +477,10 @@ class MultibodyTreeSystem : public systems::LeafSystem<T> {
   // we are in continuous or discrete mode.
   void CalcForwardDynamics(const systems::Context<T>& context,
                            AccelerationKinematicsCache<T>* ac) const {
+
+    std::cout << fmt::format("....t={} MultibodyTreeSystem::{}\n",
+                             context.get_time(), __func__);
+
     if (is_discrete())
       CalcForwardDynamicsDiscrete(context, ac);
     else

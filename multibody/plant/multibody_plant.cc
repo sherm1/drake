@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <iostream>
 #include <limits>
 #include <memory>
 #include <set>
@@ -2525,6 +2526,10 @@ template <typename T>
 void MultibodyPlant<T>::CalcContactSurfaces(
     const drake::systems::Context<T>& context,
     std::vector<ContactSurface<T>>* contact_surfaces) const {
+
+  std::cout << fmt::format("\n!!!! t={} MultibodyPlant::{} !!!!\n\n",
+                           context.get_time(), __func__);
+
   this->ValidateContext(context);
   DRAKE_DEMAND(contact_surfaces != nullptr);
 
@@ -2532,6 +2537,8 @@ void MultibodyPlant<T>::CalcContactSurfaces(
 
   *contact_surfaces =
       query_object.ComputeContactSurfaces(get_contact_surface_representation());
+
+  ++compute_contact_surfaces_count_;
 }
 
 template <>
@@ -2549,6 +2556,9 @@ void MultibodyPlant<T>::CalcHydroelasticWithFallback(
   this->ValidateContext(context);
   DRAKE_DEMAND(data != nullptr);
 
+  std::cout << fmt::format("\n!!!! t={} MultibodyPlant::{} !!!!\n\n",
+                           context.get_time(), __func__);
+
   if (num_collision_geometries() > 0) {
     const auto& query_object = EvalGeometryQueryInput(context, __func__);
     data->contact_surfaces.clear();
@@ -2557,6 +2567,8 @@ void MultibodyPlant<T>::CalcHydroelasticWithFallback(
     query_object.ComputeContactSurfacesWithFallback(
         get_contact_surface_representation(), &data->contact_surfaces,
         &data->point_pairs);
+
+    ++compute_contact_surfaces_with_fallback_count_;
   }
 }
 
@@ -2800,6 +2812,9 @@ systems::EventStatus MultibodyPlant<T>::CalcDiscreteStep(
     systems::DiscreteValues<T>* updates) const {
   this->ValidateContext(context0);
 
+  std::cout << fmt::format("**** t={} MultibodyPlant::{} ****\n",
+                           context0.get_time(), __func__);
+
   // TODO(amcastro-tri): remove the entirety of the code we are bypassing here.
   // This requires one of our custom managers to become the default
   // MultibodyPlant manager.
@@ -3033,6 +3048,10 @@ void MultibodyPlant<T>::DeclareStateCacheAndPorts() {
         ValidateGeometryInput(
             context,
             get_generalized_contact_forces_output_port(model_instance_index));
+
+        std::cout << fmt::format(
+            "....t={} MbP calc generalized contact output {}\n",
+            context.get_time(), int{model_instance_index});
 
         DRAKE_DEMAND(discrete_update_manager_ != nullptr);
         const contact_solvers::internal::ContactSolverResults<T>&

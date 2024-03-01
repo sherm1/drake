@@ -1,5 +1,6 @@
 #include "drake/multibody/plant/discrete_update_manager.h"
 
+#include <iostream>
 #include <limits>
 #include <utility>
 
@@ -269,6 +270,10 @@ template <typename T>
 const contact_solvers::internal::ContactSolverResults<T>&
 DiscreteUpdateManager<T>::EvalContactSolverResults(
     const systems::Context<T>& context) const {
+
+  std::cout << fmt::format("t={} DiscreteUpdateManager::{}\n",
+                           context.get_time(), __func__);
+
   return plant()
       .get_cache_entry(cache_indexes_.contact_solver_results)
       .template Eval<contact_solvers::internal::ContactSolverResults<T>>(
@@ -279,6 +284,10 @@ template <typename T>
 const std::vector<geometry::ContactSurface<T>>&
 DiscreteUpdateManager<T>::EvalContactSurfaces(
     const systems::Context<T>& context) const {
+
+  std::cout << fmt::format("t={} DiscreteUpdateManager::{}\n",
+                           context.get_time(), __func__);
+
   return MultibodyPlantDiscreteUpdateManagerAttorney<T>::EvalContactSurfaces(
       plant(), context);
 }
@@ -478,6 +487,9 @@ void DiscreteUpdateManager<T>::CalcContactResults(
   contact_results->Clear();
   contact_results->set_plant(&plant());
 
+  std::cout << fmt::format("....t={} DiscreteUpdateManager::{}\n",
+                           context.get_time(), __func__);
+
   switch (plant().get_contact_model()) {
     case ContactModel::kPoint:
       AppendContactResultsForPointContact(context, contact_results);
@@ -569,6 +581,9 @@ void DiscreteUpdateManager<T>::CalcHydroelasticContactInfo(
     const systems::Context<T>& context,
     std::vector<HydroelasticContactInfo<T>>* contact_info) const {
   DRAKE_DEMAND(contact_info != nullptr);
+
+  std::cout << fmt::format("....t={} DiscreteUpdateManager::{}\n",
+                           context.get_time(), __func__);
 
   const std::vector<ContactSurface<T>>& all_surfaces =
       EvalContactSurfaces(context);
@@ -743,6 +758,11 @@ template <typename T>
 void DiscreteUpdateManager<T>::CalcDiscreteContactPairs(
     const systems::Context<T>& context,
     DiscreteContactData<DiscreteContactPair<T>>* result) const {
+
+
+  std::cout << fmt::format("....t={} DiscreteUpdateManager::{}\n",
+                           context.get_time(), __func__);
+
   plant().ValidateContext(context);
   DRAKE_DEMAND(result != nullptr);
   result->Clear();
@@ -1249,6 +1269,10 @@ const VectorX<T>& DiscreteUpdateManager<T>::EvalActuation(
 template <typename T>
 const ContactResults<T>& DiscreteUpdateManager<T>::EvalContactResults(
     const systems::Context<T>& context) const {
+
+  std::cout << fmt::format("t={} DiscreteUpdateManager::{}\n",
+                           context.get_time(), __func__);
+
   return plant()
       .get_cache_entry(cache_indexes_.contact_results)
       .template Eval<ContactResults<T>>(context);

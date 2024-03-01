@@ -1,0 +1,45 @@
+load("//tools/lint:lint.bzl", "add_lint_tests")
+load("//tools/skylark:drake_cc.bzl", "drake_cc_binary")
+load("//tools/skylark:drake_data.bzl", "models_filegroup")
+
+models_filegroup(
+    name = "glob_models",
+    glob_exclude = ["images/**/*"],
+    visibility = ["//visibility:private"],
+)
+
+filegroup(
+    name = "models",
+    srcs = [
+        ":glob_models",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+drake_cc_binary(
+    name = "model_dales_problem",
+    srcs = ["model_dales_problem.cc"],
+    add_test_rule = True,
+    data = [
+        ":models",
+        "@drake_models//:wsg_50_description",
+    ],
+    test_rule_args = [
+        "--simulation_sec=0.1",
+        "--realtime_rate=0.0",
+    ],
+    deps = [
+        "//multibody/parsing",
+        "//multibody/plant:multibody_plant_config_functions",
+        "//systems/analysis:simulator",
+        "//systems/analysis:simulator_config_functions",
+        "//systems/analysis:simulator_gflags",
+        "//systems/analysis:simulator_print_stats",
+        "//systems/framework:diagram",
+        "//systems/primitives",
+        "//visualization",
+        "@gflags",
+    ],
+)
+
+add_lint_tests(enable_clang_format_lint = False)

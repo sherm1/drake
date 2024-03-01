@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <memory>
 
 #include "drake/common/default_scalars.h"
@@ -69,6 +70,9 @@ class RungeKutta2Integrator final : public IntegratorBase<T> {
 template <class T>
 bool RungeKutta2Integrator<T>::DoStep(const T& h) {
   Context<T>* const context = IntegratorBase<T>::get_mutable_context();
+
+  std::cout << fmt::format("####t={} RungeKutta2Integrator::{} h={}\n",
+                           context->get_time(), __func__, h);
 
   // CAUTION: This is performance-sensitive inner loop code that uses dangerous
   // long-lived references into state and cache to avoid unnecessary copying and

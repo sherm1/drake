@@ -1,5 +1,6 @@
 #include "drake/systems/analysis/simulator.h"
 
+#include <iostream>
 #include <thread>
 
 #include "drake/common/extract_double.h"
@@ -63,6 +64,9 @@ SimulatorStatus Simulator<T>::Initialize(const InitializeParams& params) {
   if (!context_)
     throw std::logic_error("Initialize(): Context has not been set.");
 
+  std::cout << fmt::format("####t={} Simulator::{}\n", context_->get_time(),
+                           __func__);
+
   initialization_done_ = false;
 
   // Record the current time so we can restore it later (see below).
@@ -105,6 +109,10 @@ SimulatorStatus Simulator<T>::Initialize(const InitializeParams& params) {
                                   &initialize_status)) {
     return initialize_status;
   }
+
+  if (!accumulated_event_status.did_nothing())
+    std::cout << fmt::format("####t={} Simulator::{} DiscreteState updated\n",
+                             context_->get_time(), __func__);
 
   // TODO(sherm1) "early publish" initialization events should be handled here.
 
@@ -283,6 +291,9 @@ SimulatorStatus Simulator<T>::AdvanceTo(const T& boundary_time) {
       return initialize_status;
   }
 
+  std::cout << fmt::format("####t={} Simulator::{}\n", context_->get_time(),
+                           __func__);
+
   DRAKE_DEMAND(!std::isnan(last_known_simtime_));
   if (last_known_simtime_ != context_->get_time()) {
     throw std::logic_error(
@@ -315,6 +326,9 @@ SimulatorStatus Simulator<T>::AdvanceTo(const T& boundary_time) {
     const T step_start_time = context_->get_time();
     DRAKE_LOGGER_TRACE("Starting a simulation step at {}", step_start_time);
 
+    std::cout << fmt::format("\n####t={} Simulator::{} Begin step\n",
+                             context_->get_time(), __func__);
+
     // Delay to match target realtime rate if requested and possible.
     PauseIfTooFast();
 
@@ -344,6 +358,11 @@ SimulatorStatus Simulator<T>::AdvanceTo(const T& boundary_time) {
                                     &simulator_status)) {
       return simulator_status;
     }
+
+    if (!accumulated_event_status.did_nothing())
+      std::cout << fmt::format(
+          "\n####\n####t={} Simulator::{} DiscreteState updated\n####\n",
+                               context_->get_time(), __func__);
 
     // TODO(sherm1) "early publish" events should be handled here. Also
     //  update the Step() documentation at the top of simulator.h.

@@ -5126,6 +5126,14 @@ class MultibodyPlant : public internal::MultibodyTreeSystem<T> {
   using internal::MultibodyTreeSystem<T>::EvalPositionKinematics;
   using internal::MultibodyTreeSystem<T>::EvalVelocityKinematics;
 
+  int compute_contact_surfaces_count() const {
+    return compute_contact_surfaces_count_;
+  }
+
+  int compute_contact_surfaces_with_fallback_count() const {
+    return compute_contact_surfaces_with_fallback_count_;
+  }
+
  private:
   using internal::MultibodyTreeSystem<T>::internal_tree;
   using internal::MultibodyTreeSystem<T>::mutable_tree;
@@ -5372,6 +5380,10 @@ class MultibodyPlant : public internal::MultibodyTreeSystem<T> {
   // Eval version of the method CalcContactSurfaces().
   const std::vector<geometry::ContactSurface<T>>& EvalContactSurfaces(
       const systems::Context<T>& context) const {
+
+    std::cout << fmt::format("t={} MultibodyPlant::{}\n",
+                             context.get_time(), __func__);
+
     // TODO(jwnimmer-tri) This function is too large to be inline.
     // Move its definition to the cc file.
     this->ValidateContext(context);
@@ -5881,6 +5893,9 @@ class MultibodyPlant : public internal::MultibodyTreeSystem<T> {
   // Whether to apply collsion filters to adjacent bodies at Finalize().
   bool adjacent_bodies_collision_filters_{
       MultibodyPlantConfig{}.adjacent_bodies_collision_filters};
+
+  mutable int compute_contact_surfaces_count_{0};
+  mutable int compute_contact_surfaces_with_fallback_count_{0};
 };
 
 /// @cond

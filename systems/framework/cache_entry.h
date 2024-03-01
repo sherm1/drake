@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <iostream>
 #include <memory>
 #include <set>
 #include <string>
@@ -149,6 +150,11 @@ class CacheEntry {
   // called *a lot*.
   const AbstractValue& EvalAbstract(const ContextBase& context) const {
     const CacheEntryValue& cache_value = get_cache_entry_value(context);
+
+    if (cache_value.needs_recomputation())
+      std::cout << fmt::format("              eval {}::{} (OUT OF DATE)\n",
+                               owning_system_->GetSystemName(), description());
+
     if (cache_value.needs_recomputation()) UpdateValue(context);
     return cache_value.get_abstract_value();
   }
@@ -305,6 +311,8 @@ class CacheEntry {
     // If Calc() throws a recoverable exception, the cache remains out of date.
     Calc(context, &value);
     mutable_cache_value.mark_up_to_date();
+    std::cout << fmt::format("              eval {}::{} (updated)\n",
+                             owning_system_->GetSystemName(), description());
   }
 
   // The value was unexpectedly out of date. Issue a helpful message.

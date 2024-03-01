@@ -1003,6 +1003,10 @@ template <typename T>
 void SapDriver<T>::CalcContactSolverResults(
     const systems::Context<T>& context,
     contact_solvers::internal::ContactSolverResults<T>* results) const {
+
+  std::cout << fmt::format("    t={} SapDriver::{}\n",
+                           context.get_time(), __func__);
+
   const SapSolverResults<T>& sap_results = EvalSapSolverResults(context);
   const DiscreteContactData<DiscreteContactPair<T>>& contact_pairs =
       manager().EvalDiscreteContactPairs(context);

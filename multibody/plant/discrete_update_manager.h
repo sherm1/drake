@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <map>
 #include <memory>
 #include <set>
@@ -142,6 +143,10 @@ class DiscreteUpdateManager : public ScalarConvertibleComponent<T> {
   void CalcContactSolverResults(
       const systems::Context<T>& context,
       contact_solvers::internal::ContactSolverResults<T>* results) const {
+
+    std::cout << fmt::format("....t={} DiscreteUpdateManager::{}\n",
+                             context.get_time(), __func__);
+
     DRAKE_DEMAND(results != nullptr);
     plant().ValidateContext(context);
     DoCalcContactSolverResults(context, results);
