@@ -107,7 +107,7 @@ int DoMain() {
   plant.WeldFrames(plant.world_frame(), plant.GetFrameByName("gripper"), X_WF0);
   plant.Finalize();
 
-  if (true) {
+  if (false) {
     // Filter spatula's generalize contact forces.
     const auto filter =
         builder.AddNamedSystem<systems::FirstOrderLowPassFilter>(
@@ -201,6 +201,7 @@ int DoMain() {
   simulator.Initialize();
   meshcat->StartRecording();
   simulator.AdvanceTo(FLAGS_simulation_sec);
+  simulator.AdvancePendingEvents();
   meshcat->StopRecording();
 
   // TODO(#19142) According to issue 19142, we can playback contact forces and

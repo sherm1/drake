@@ -2406,6 +2406,9 @@ VectorX<T> MultibodyPlant<T>::AssembleActuationInput(
     const systems::Context<T>& context) const {
   this->ValidateContext(context);
 
+  std::cout << "t=" << context.get_time()
+    << " MultibodyPlant::AssembleActuationInput()\n";
+
   // Assemble the vector from the model instance input ports.
   // TODO(sherm1) Heap allocation here. Get rid of it.
   // We initialize to zero. Actuation inputs are assumed to have zero values if
