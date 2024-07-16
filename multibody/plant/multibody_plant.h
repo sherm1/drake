@@ -400,14 +400,14 @@ By default, a discrete %MultibodyPlant has these update dynamics:
 
      s[n+1] = g(t[n], x[n], u[n])     record sample
      x[n+1] = f(t[n], x[n], u[n])     update kinematics
-    yd[n+1] = gd(s[n+1])              dynamic outputs use sampled values
-    yk[n+1] = gk(x[n+1])              kinematic outputs use current x
+    yd[n+1] = gd(s)                   dynamic outputs use sampled values
+    yk[n+1] = gk(x)                   kinematic outputs use current x
 
 Optionally, output port sampling can be disabled. In that case we have:
 
      x[n+1] = f(t[n], x[n], u[n])       update kinematics
-    yd[n+1] = gd(g(t, x[n+1], u[n+1]))  dynamic outputs use current values
-    yk[n+1] = gk(x[n+1])                kinematic outputs use current x
+    yd[n+1] = gd(g(t, x, u))            dynamic outputs use current values
+    yk[n+1] = gk(x)                     kinematic outputs use current x
 
 We're using `yd` and `yk` above to represent the calculated values of dynamic
 and kinematic output ports, resp. Kinematic output ports are those that depend
@@ -417,14 +417,14 @@ Everything else depends on forces so is a dynamic output port:
 `reaction_forces`, and `contact_results`.
 
 Use the function SetUseSampledOutputPorts() to choose which dynamics you prefer.
-The default behavior (output port sampling) is more efficient for simulation, at
-the cost of some inconsistency (see below) between the dynamic output port
-values and the current kinematics and input values from the Context. Disabling
-output port sampling provides "live" output port results that are recalculated
-from the current state and inputs whenever changes occur. It also eliminates the
-sampling state variable (s above). Note that kinematic output ports (that is,
-those depending only on position and velocity) are always "live" -- they are
-calculated as needed from the current (updated) state.
+The default behavior (output port sampling) is more efficient for simulation,
+but use slightly-different kinematics for the dynamic output port computations
+versus the kinematic output ports. Disabling output port sampling provides
+"live" output port results that are recalculated from the current state and
+inputs whenever changes occur. It also eliminates the sampling state variable
+(s above). Note that kinematic output ports (that is, those depending only on
+position and velocity) are always "live" -- they are calculated as needed from
+the current (updated) state.
 
 The reason that the default mode is more efficient for simulation is that the
 sample variable s records expensive-to-compute results (such as hydroelastic
@@ -432,50 +432,13 @@ contact forces) that are needed to advance the state x. Those results are thus
 available for free at the start of step n. If instead we wait until after the
 state is updated to n+1, we would have to recalculate those expensive results
 at the new state in order to report them. Thus sampling means the output ports
-show the results that were calculated using kinematics values x[n], although the
-Context has been updated to kinematics values x[n+1]. That's the inconsistency
-mentioned above; if it isn't tolerable you should disable output port
-sampling. You can also force an update to occur using ExecuteForcedEvents().
+show the results that were calculated using kinematics values x[n], although
+the Context has been updated to kinematics values x[n+1]. If that isn't
+tolerable you should disable output port sampling. You can also force an update
+to occur using ExecuteForcedEvents().
 
 See @ref output_port_sampling "Output port sampling" below for more practical
 considerations.
-
-#### (Advanced) Some Drake subtleties
-
-Recall that every Drake System is continuous in the sense that values are
-available at any time t. We relate the continuous and discrete
-aspects of a system by considering that at the nᵗʰ discrete step we have
-time t[n] = n * dt where dt is the discrete update interval.
-See @ref discrete_systems "Discrete Systems" for background.
-
-Outputs y (that is, the values of output ports) are always calculated from the
-values currently available from the Context. That's true both for continuous
-and discrete systems; the difference is just _when_ updates to the Context
-occur. A Context contains (or provides access to) these elements:
-
-          context(t) = { t, x, s, u(t) }
-             t             the current time
-             x = {q, v}    the current kinematic state
-             s             a collection of previously-sampled values
-             u(t)          the current value of the input ports (live)
-
-When thinking about the effects of a discrete update on the context, we'll
-assume we start with the context produced by step n, and we want to update
-it to n+1. We'll write the starting context
-
-          context[n] ≜ { t[n], x[n], s[n], u[n]) }
-
-(That is a more precise definition of the notation we used above for the
-discrete dynamics.) The discrete update above modifies the context to
-
-          context = { t[n], x[n+1], s[n+1], u(t) }
-
-Note that t is unchanged, and u(t) is live so has an unknown value at this
-point (it may be a feedback value that depends on x or s).
-The Simulator is then responsible for updating time to t[n+1] which may
-involve evaluations in the interval [t[n], t[n+1]]. Since discrete updates
-occur at the start of a step, evaluations in that interval will always see
-the updated [n+1] values of x and s.
 
 Minor details most users won't care about:
 
