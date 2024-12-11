@@ -37,6 +37,7 @@ namespace drake {
 namespace multibody {
 
 template <typename T> class RigidBodyFrame;
+template <typename T> class FrameBase;
 template <typename T> class Frame;
 template <typename T> class RigidBody;
 template <typename T> class Joint;
