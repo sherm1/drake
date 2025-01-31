@@ -35,8 +35,35 @@ following (ideally inline) methods.
 state variables for the particular mobilizer. They are only 8-byte aligned so be
 careful when interpreting them as Eigen vectors for computation purposes.
 
-  // Returns X_FM(q)
+
+  // Returns X_FM(q), filling in all 12 entries.
   math::RigidTransform<T> calc_X_FM(const T* q) const;
+
+  // CONSIDER: sets every element of X_FM(q=0) to get all the constants set
+  // to their persistent values. After this, using only update_X_FM() to
+  // change the non-constant values. This allows a weld to set its transform
+  // once and never update.
+  math::RigidTransform<T> init_X_FM0() const;
+
+  // TODO(sherm1) Weld should be templatized 0 (X_FM=identity), 1 (X_FM is
+  //  translate only), 2 (X_FM is general).
+
+  // TODO(sherm1) Revolute should be templatized 0,1,2 -> x,y,z rotation or
+  //  4 rotation about a general axis.
+
+  // Updates X_FM, assuming that all constant elements of X_FM were
+  // initialized properly so don't need to be set.
+  void update_X_FM(const T* q, RigidTransform<T>* X_FM) const;
+
+  // Given a general transform X_AF and our cross-mobilizer transform X_FM,
+  // returns X_AM = X_AF * X_FM taking advantage of the known structure of X_FM.
+  RigidTransform<T> compose_X_FM(const RigidTransform<T>& X_AF,
+                                 const RigidTransform<T>& X_FM) const;
+
+  // Returns v_F = R_FM * v_M, taking advantage of the known structure of
+  // of R_FM. For example, we have v_F = v_M for a prismatic mobilizer.
+  Vector3<T> apply_R_FM(const RotationMatrix<T>& R_FM,
+                        const Vector3<T>& v_M) const;
 
   // Returns V_FM_F = H_FM_F(q)⋅v
   SpatialVelocity<T> calc_V_FM(const T* q,
