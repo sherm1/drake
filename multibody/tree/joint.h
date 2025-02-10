@@ -1028,7 +1028,15 @@ class Joint : public MultibodyElement<T> {
 
   // This method must be implemented by derived Joint classes in order to
   // provide JointImplementationBuilder a Mobilizer as the Joint's internal
-  // representation.
+  // representation. Starting with the user's joint frames Jp (on parent)
+  // and Jc (on child) we must create an inboard frame F and outboard frame M
+  // suitable for an available Mobilizer. For example, if a revolute Mobilizer
+  // can only rotate around its z axis, while the revolute Joint specifies an
+  // arbitrary axis a⃗, we'll need to calculate frames such that Fz and Mz are
+  // aligned with a⃗, and the other axes chosen so that the joint coordinates q
+  // are the same as they would be when rotating about a⃗. We also must decide
+  // whether inboard/outboard is reversed from parent/child. If so we want
+  // X_JcF and X_JpM while normally we want X_JpF and X_JcM.
   virtual std::unique_ptr<internal::Mobilizer<T>> MakeMobilizerForJoint(
       const internal::SpanningForest::Mobod& mobod) const = 0;
 
