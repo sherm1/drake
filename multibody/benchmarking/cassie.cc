@@ -110,6 +110,17 @@ class Cassie : public benchmark::Fixture {
     }
   }
 
+  // Runs the CompositeBodyInertiaInWorld benchmark.
+  // NOLINTNEXTLINE(runtime/references)
+  void DoCompositeBodyInertiaInWorld(benchmark::State& state) {
+    DRAKE_DEMAND(want_grad_vdot(state) == false);
+    DRAKE_DEMAND(want_grad_u(state) == false);
+    for (auto _ : state) {
+      InvalidateState();
+      plant_->EvalCompositeBodyInertiaInWorldCache(*context_);
+    }
+  }
+
   // Runs the PosAndVelKinematics benchmark.
   // NOLINTNEXTLINE(runtime/references)
   void DoPosAndVelKinematics(benchmark::State& state) {
@@ -300,6 +311,15 @@ BENCHMARK_DEFINE_F(CassieDouble, PositionKinematics)(benchmark::State& state) {
   DoPositionKinematics(state);
 }
 BENCHMARK_REGISTER_F(CassieDouble, PositionKinematics)
+    ->Unit(benchmark::kMicrosecond)
+    ->Arg(kWantNoGrad);
+
+BENCHMARK_DEFINE_F(CassieDouble, CompositeBodyInertiaInWorld)
+// NOLINTNEXTLINE(runtime/references)
+    (benchmark::State& state) {
+  DoCompositeBodyInertiaInWorld(state);
+}
+BENCHMARK_REGISTER_F(CassieDouble, CompositeBodyInertiaInWorld)
     ->Unit(benchmark::kMicrosecond)
     ->Arg(kWantNoGrad);
 
