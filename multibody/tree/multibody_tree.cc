@@ -1339,6 +1339,25 @@ void MultibodyTree<T>::CalcPositionKinematicsCache(
 }
 
 template <typename T>
+void MultibodyTree<T>::CalcSystemJacobianCache(
+    const systems::Context<T>& context, SystemJacobianCache<T>* sjc) const {
+  DRAKE_DEMAND(sjc != nullptr);
+
+  const std::vector<Vector6<T>>& H_PB_W_cache =
+      EvalAcrossNodeJacobianWrtVExpressedInWorld(context);
+
+  // Each treei generates an ni x mi block.
+  for (const SpanningForest::Tree& tree : forest().trees()) {
+    const int n = tree.num_mobods();
+    const int m = tree.nv();
+    MatrixX<T>& J = (*sjc)[tree.index()];
+    DRAKE_DEMAND(J.rows() == n && J.cols() == m);
+
+    // TODO(sherm1) Iterate over the tree's mobods in parent->child order.
+  }
+}
+
+template <typename T>
 void MultibodyTree<T>::CalcVelocityKinematicsCache(
     const systems::Context<T>& context, const PositionKinematicsCache<T>& pc,
     VelocityKinematicsCache<T>* vc) const {
