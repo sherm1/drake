@@ -1738,9 +1738,27 @@ class MultibodyPlant final : public internal::MultibodyTreeSystem<T> {
   /// @param[in] model_instance (optional) the index of the model instance to
   ///   which `joint_type` is to be applied.
   /// @throws std::exception if called after Finalize().
+  /// @see GetBaseBodyJointType(), SetCombineWeldedBodies(), Finalize()
   void SetBaseBodyJointType(
       BaseBodyJointType joint_type,
       std::optional<ModelInstanceIndex> model_instance = {});
+
+  /// Controls whether welded-together RigidBody elements are to be combined
+  /// into a single composite mobilized body in the generated model. If so,
+  /// the Weld joints will not appear in the post-Finalize() model and there
+  /// will be fewer bodies and joints in the generated model than in the user's
+  /// specification. Results for the original RigidBody elements can still be
+  /// obtained by name or BodyIndex, but no results (in particular, no reaction
+  /// forces) are available for the unmodeled Weld joints.
+  ///
+  /// You can set this globally or on a per-model instance basis.
+  ///
+  /// The default for Drake is _not_ to combine welded RigidBody elements.
+  ///
+  /// @throws std::exception if called after Finalize().
+  /// @see GetCombineWeldedBodies(), SetBaseBodyJointType(), Finalize()
+  void SetCombineWeldedBodies(
+      bool combine, std::optional<ModelInstanceIndex> model_instance = {});
 
   /// Returns the currently-set choice for base body joint type, either for
   /// the global setting or for a specific model instance if provided.
@@ -1750,8 +1768,21 @@ class MultibodyPlant final : public internal::MultibodyTreeSystem<T> {
   /// This can be called any time -- pre-finalize it returns the joint type
   /// that will be used by Finalize(); post-finalize it returns the joint type
   /// that _was_ used if there were any base bodies in need of a joint.
-  /// @see SetBaseBodyJointType()
+  /// @see SetBaseBodyJointType(), GetCombineWeldedBodies(), Finalize()
   BaseBodyJointType GetBaseBodyJointType(
+      std::optional<ModelInstanceIndex> model_instance = {}) const;
+
+  /// Returns the currently-set choice for whether welded-together bodies
+  /// should be combined or modeled separately, either for the global setting
+  /// or for a specific model instance. If a model instance is provided for
+  /// which no explicit choice was made, the global setting is returned. Any
+  /// model instance index is acceptable here; if not recognized then the global
+  /// setting is returned. This can be called any time -- pre-finalize it
+  /// returns the setting that will be used by Finalize(); post-finalize it
+  /// returns the setting that _was_ used if there were any welded-together
+  /// bodies.
+  /// @see SetCombineWeldedBodies(), GetBaseBodyJointType(), Finalize()
+  bool GetCombineWeldedBodies(
       std::optional<ModelInstanceIndex> model_instance = {}) const;
 
   /// This method must be called after all elements in the model (joints,

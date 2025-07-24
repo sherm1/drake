@@ -83,6 +83,9 @@ inline ForestBuildingOptions operator&(ForestBuildingOptions left,
   return static_cast<ForestBuildingOptions>(static_cast<unsigned>(left) &
                                             static_cast<unsigned>(right));
 }
+inline ForestBuildingOptions operator~(ForestBuildingOptions options) {
+  return static_cast<ForestBuildingOptions>(~static_cast<unsigned>(options));
+}
 
 }  // namespace internal
 }  // namespace multibody
