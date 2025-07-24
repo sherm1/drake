@@ -84,7 +84,7 @@ class DummyBodyNode : public BodyNode<double> {
   }
 
   void CalcVelocityKinematicsCache_BaseToTip(
-      const T*, const PositionKinematicsCache<T>&,
+      const FrameBodyPoseCache<T>&, const T*, const PositionKinematicsCache<T>&,
       const std::vector<Vector6<T>>&, const T*,
       VelocityKinematicsCache<T>*) const final {
     DRAKE_UNREACHABLE();

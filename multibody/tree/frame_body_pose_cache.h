@@ -160,6 +160,14 @@ class FrameBodyPoseCache {
     M_BBo_B_pool_[index] = M_BBo_B;
   }
 
+  // Add in the inertia contribution from link L, after shifting to Bo and
+  // re-expressing in B.
+  void AddToM_BBo_B(MobodIndex index, const SpatialInertia<T>& M_LBo_B) {
+    // This method is only called when parameters change.
+    DRAKE_DEMAND(0 <= index && index < ssize(M_BBo_B_pool_));
+    M_BBo_B_pool_[index] += M_LBo_B;
+  }
+
  private:
   // Sizes are set on construction.
 

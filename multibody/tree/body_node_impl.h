@@ -79,7 +79,8 @@ class BodyNodeImpl final : public BodyNode<T> {
       std::vector<Vector6<T>>* H_PB_W_cache) const final;
 
   void CalcVelocityKinematicsCache_BaseToTip(
-      const T* positions, const PositionKinematicsCache<T>& pc,
+      const FrameBodyPoseCache<T>& frame_body_pose_cache, const T* positions,
+      const PositionKinematicsCache<T>& pc,
       const std::vector<Vector6<T>>& H_PB_W_cache, const T* velocities,
       VelocityKinematicsCache<T>* vc) const final;
 

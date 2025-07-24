@@ -262,7 +262,8 @@ class BodyNode : public MultibodyElement<T> {
   // double_pendulum_test.cc, and by any other unit tests making use of
   // MultibodyTree::CalcVelocityKinematicsCache().
   virtual void CalcVelocityKinematicsCache_BaseToTip(
-      const T* positions, const PositionKinematicsCache<T>& pc,
+      const FrameBodyPoseCache<T>& frame_body_pose_cache, const T* positions,
+      const PositionKinematicsCache<T>& pc,
       const std::vector<Vector6<T>>& H_PB_W_cache, const T* velocities,
       VelocityKinematicsCache<T>* vc) const = 0;
 

@@ -966,7 +966,15 @@ class MultibodyTree {
       std::optional<ModelInstanceIndex> model_instance = {});
 
   // See MultibodyPlant API.
+  void SetCombineWeldedBodies(
+      bool combine, std::optional<ModelInstanceIndex> model_instance = {});
+
+  // See MultibodyPlant API.
   BaseBodyJointType GetBaseBodyJointType(
+      std::optional<ModelInstanceIndex> model_instance = {}) const;
+
+  // See MultibodyPlant API.
+  bool GetCombineWeldedBodies(
       std::optional<ModelInstanceIndex> model_instance = {}) const;
 
   // Finalize() must be called after all user-defined elements in the plant
