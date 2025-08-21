@@ -3322,32 +3322,38 @@ class MultibodyPlant final : public internal::MultibodyTreeSystem<T> {
   ///
   /// A %MultibodyPlant user adds sets of RigidBody (Link) and Joint objects to
   /// `this` plant to build a representation of a mechanical system of interest.
-  /// At Finalize(), %MultibodyPlant builds a mathematical model of
-  /// that system as a forest of trees, with each tree's root (which we call
-  /// that tree's _base body_) connected directly to World by a joint defining
-  /// the base body's mobility. If no input joint is provided for a base body,
-  /// one is added automatically. Typically a QuaternionFloatingJoint is added,
-  /// but the function SetBaseBodyJointType() can be used to change the type of
-  /// joint used.
+  /// At Finalize(), %MultibodyPlant builds a mathematical model of that system
+  /// as a forest of trees of _mobilized bodies_ (Mobods). Typically each link
+  /// has its own Mobod, but welded-together links form a _link composite_ that
+  /// may (optionally) be merged to follow a single Mobod for improved
+  /// performance. Each tree's root Mobod connects to World (or to the World
+  /// link composite) by a joint that defines its mobility. The follower link
+  /// whose joint connects the root Mobod to world is called the _base body_
+  /// or _base link_ of that tree. If no input joint is provided for a base
+  /// body, one is added automatically. Typically a QuaternionFloatingJoint is
+  /// added, but the function SetBaseBodyJointType() can be used to change the
+  /// type of joint used.
   ///
-  /// In this model each input Joint (including those added for base
-  /// bodies) is modeled internally using a Mobilizer, which grants a certain
-  /// number of degrees of freedom in accordance to the physical specification.
-  /// If a body has _six_ degrees of freedom with respect to its parent, it is
-  /// called a _free body_. If a free body is also the root of a tree, such that
-  /// its parent is the world body, it is a _floating base body_. Bodies that
-  /// are added to the plant without specifying a joint normally become floating
-  /// base bodies after finalization.
+  /// In this model each input Joint (and those added for base bodies) is
+  /// modeled internally using a _Mobilizer_, which grants a certain number of
+  /// degrees of freedom in accordance to the joint's specification. If a body's
+  /// mobilizer grants it _six_ degrees of freedom with respect to its parent,
+  /// it is called a _free body_. If, in addition, a free body's parent is the
+  /// World body (not just any link of the World link composite), it is called a
+  /// _floating base body_. Floating base bodies have the important property
+  /// that they can be freely posed with respect to World. Bodies that are added
+  /// to the plant without specifying a joint (typical for manipulands) normally
+  /// become floating base bodies after finalization.
   ///
   /// It is possible (and sometimes useful) to explicitly create a 6-dof
   /// joint between two bodies. The child body would be free, because it has six
-  /// degrees of freedom, but it would _not_ be a floating base body because its
-  /// parent is not the world. The effects of the various APIs below depend on
+  /// degrees of freedom, but it would _not_ be a floating base body unless its
+  /// parent is World. The effects of the APIs below depend on
   /// the distinction between "free" and "floating base bodies". Read carefully.
   /// A user can request the set of all floating base bodies with a call to
   /// GetFloatingBaseBodies(). Alternatively, a user can query whether a
   /// RigidBody is a floating base body or not with RigidBody::is_floating().
-  /// For many applications, you may need to work with the entries in the
+  /// For many applications, you will need to work with the entries in the
   /// multibody state vector that directly affect a floating base body. For
   /// such applications, RigidBody::floating_positions_start() and
   /// RigidBody::floating_velocities_start_in_v() offer the additional level of
