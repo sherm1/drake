@@ -3320,25 +3320,26 @@ class MultibodyPlant final : public internal::MultibodyTreeSystem<T> {
   /// @anchor mbp_working_with_free_bodies
   /// @name                Working with free bodies
   ///
-  /// A %MultibodyPlant user adds sets of RigidBody and Joint objects to `this`
-  /// plant to build a physical representation of a mechanical model.
-  /// At Finalize(), %MultibodyPlant builds a mathematical representation of
-  /// such system as a forest of trees, with each tree's root (which we call
+  /// A %MultibodyPlant user adds sets of RigidBody (Link) and Joint objects to
+  /// `this` plant to build a representation of a mechanical system of interest.
+  /// At Finalize(), %MultibodyPlant builds a mathematical model of
+  /// that system as a forest of trees, with each tree's root (which we call
   /// that tree's _base body_) connected directly to World by a joint defining
   /// the base body's mobility. If no input joint is provided for a base body,
-  /// one is added automatically. The function SetBaseBodyJointType() can be
-  /// used to change the type of joint used.
+  /// one is added automatically. Typically a QuaternionFloatingJoint is added,
+  /// but the function SetBaseBodyJointType() can be used to change the type of
+  /// joint used.
   ///
-  /// In this representation each input Joint (including those added for base
+  /// In this model each input Joint (including those added for base
   /// bodies) is modeled internally using a Mobilizer, which grants a certain
   /// number of degrees of freedom in accordance to the physical specification.
   /// If a body has _six_ degrees of freedom with respect to its parent, it is
-  /// called a _free body_. If it also the root of a tree, such that its parent
-  /// is the world body, it is a _floating base body_. Bodies that are added to
-  /// the plant without specifying a joint normally become floating base bodies
-  /// after finalization.
+  /// called a _free body_. If a free body is also the root of a tree, such that
+  /// its parent is the world body, it is a _floating base body_. Bodies that
+  /// are added to the plant without specifying a joint normally become floating
+  /// base bodies after finalization.
   ///
-  /// It is possible (and sometimes recommended) to explicitly create a 6-dof
+  /// It is possible (and sometimes useful) to explicitly create a 6-dof
   /// joint between two bodies. The child body would be free, because it has six
   /// degrees of freedom, but it would _not_ be a floating base body because its
   /// parent is not the world. The effects of the various APIs below depend on
@@ -3346,23 +3347,22 @@ class MultibodyPlant final : public internal::MultibodyTreeSystem<T> {
   /// A user can request the set of all floating base bodies with a call to
   /// GetFloatingBaseBodies(). Alternatively, a user can query whether a
   /// RigidBody is a floating base body or not with RigidBody::is_floating().
-  /// For many applications, a user might need to work with indices in the
-  /// multibody state vector. For such applications,
-  /// RigidBody::floating_positions_start() and
+  /// For many applications, you may need to work with the entries in the
+  /// multibody state vector that directly affect a floating base body. For
+  /// such applications, RigidBody::floating_positions_start() and
   /// RigidBody::floating_velocities_start_in_v() offer the additional level of
   /// introspection needed. These APIs only apply to floating base bodies and
   /// _not_ 6-dof free bodies generally.
   ///
-  /// It is sometimes convenient for users to perform operations on RigidBodies
-  /// uniformly through the APIs of the Joint class. For that reason the plant
-  /// implicitly constructs a 6-dof joint, typically a QuaternionFloatingJoint,
-  /// between the body and the world for all bodies otherwise without declared
-  /// inboard joints at the time of Finalize(). Using Joint APIs to affect a
-  /// free body (setting  state, changing parameters, etc.) has the same effect
-  /// as using the free body APIs below. Each implicitly created joint is named
-  /// the same as the free body, as reported by `RigidBody::name()`. In the rare
-  /// case that there is already some (unrelated) joint with that name, we'll
-  /// prepend underscores to the name until it is unique.
+  /// It is sometimes convenient to perform operations on RigidBodies uniformly
+  /// (regardless of whether they are free bodies) through the APIs of the Joint
+  /// class. The joint added at Finalize() can be used for that purpose (see
+  /// above). Using Joint APIs to affect a free body (setting  state, changing
+  /// parameters, etc.) has the same effect as using the free body APIs below.
+  /// Each implicitly created joint is named the same as the free body, as
+  /// reported by `RigidBody::name()`. In the rare case that there is already
+  /// some (unrelated) joint with that name, we'll prepend underscores to the
+  /// name until it is unique.
   ///
   /// The APIs below provide affordances for working with free bodies without
   /// explicitly accessing the corresponding floating joint. The pose of a free

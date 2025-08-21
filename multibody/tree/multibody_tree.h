@@ -2880,10 +2880,6 @@ class MultibodyTree {
   std::pair<Eigen::Quaternion<double>, Vector3<double>>
   GetDefaultFreeBodyPoseAsQuaternionVec3Pair(const RigidBody<T>& body) const;
 
-  // TODO(amcastro-tri): In future PR's adding MBT computational methods, write
-  //  a method that verifies the state of the topology with a signature similar
-  //  to RoadGeometry::CheckHasRightSizeForModel().
-
   // These objects are defined via MultibodyPlant and are thus user-visible.
   const RigidBody<T>* world_rigid_body_{nullptr};
   // When we need to look up elements by name, we'll use an ElementCollection.

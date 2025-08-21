@@ -236,11 +236,11 @@ void MultibodyTreeTopology::FinalizeTopology(const LinkJointGraph& graph) {
 
   const SpanningForest& forest = graph.forest();
 
-  // Create a BodyNodeTopology corresponding to each Mobod in the forest,
+  // Create MobilizerTopology corresponding to each Mobod in the forest,
   // indexed identically. Note that Mobods are already in depth-first order so
-  // we can use the same numbering for BodyNodes. Also update RigidBodyTopology,
-  // though in the case where we combine welded-together rigid bodies only the
-  // "active" body of each Composite gets updated here.
+  // we can use the same numbering for Mobilizers. Also update
+  // RigidBodyTopology, though in the case where we combine welded-together
+  // rigid bodies only the "active" body of each Composite gets updated here.
   for (const auto& mobod : forest.mobods()) {
     const MobodIndex node_index(mobod.index());
     const BodyIndex rigid_body_index =
