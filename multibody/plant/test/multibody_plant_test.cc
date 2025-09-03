@@ -6155,10 +6155,23 @@ GTEST_TEST(MultibodyPlantTest, GetNames) {
 GTEST_TEST(MultibodyPlantTest, FloatingJointNames) {
   {
     MultibodyPlant<double> plant(0.0);
-    plant.AddRigidBody("free_body", default_model_instance(),
-                       SpatialInertia<double>::MakeUnitary());
+    const ModelInstanceIndex mi = plant.AddModelInstance("MyModelInstance");
+    plant.AddRigidBody("default", default_model_instance(),
+      SpatialInertia<double>::MakeUnitary());
+    const RigidBody<double>& free_body = plant.AddRigidBody(
+        "free_body", mi, SpatialInertia<double>::MakeUnitary());
+    const RigidBody<double>& outer_body = plant.AddRigidBody(
+        "outer_body", mi, SpatialInertia<double>::MakeUnitary());
+    plant.AddJoint<RevoluteJoint>("the_joint", free_body, {}, outer_body, {},
+                                  Vector3<double>(0, 0, 1));
     plant.Finalize();
     EXPECT_NO_THROW(plant.GetJointByName("free_body"));
+
+    std::vector<std::string> names = plant.GetPositionNames();
+    EXPECT_EQ(names, std::vector<std::string>());
+
+    names = plant.GetPositionNames(mi, true, true);
+    EXPECT_EQ(names, std::vector<std::string>());
   }
 
   // Verify that in case of a name conflict, we prepend with underscores
