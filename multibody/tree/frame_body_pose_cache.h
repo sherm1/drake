@@ -13,14 +13,29 @@ namespace drake {
 namespace multibody {
 namespace internal {
 
-/* This class is one of the cache entries in the Context. It holds the
-precalculated body-relative poses X_BF of every Frame F. Since FixedOffsetFrame
-body poses are parameterized, and given with respect to a parent frame P which
-may itself be a parameterized FixedOffsetFrame, we need to precalculate X_BF
-once the parameters have been set so that we don't have to do that calculation
-repeatedly at runtime. We also precalculate the inverse X_FB since that
-is often needed as well, and record whether X_BF (and of course X_FB) is the
-identity transform, for use in runtime optimizations.
+/* This class is one of the cache entries in the Context. It holds frame-
+and body-related quantities that can be calculated only from parameters
+(i.e. state-independent quantities).
+
+### Terminology
+Every link L has a link frame of the same name L.
+Every mobilized body (Mobod) B has a body frame B.
+When a Mobod Bᵢ models just one link Lⱼ we have Bᵢ=Lⱼ. Otherwise Bᵢ=Lₐ where
+Lₐ is that Mobod's active (most inboard) link.
+
+### Quantities precalculated here
+ - The pose X_BL of each link frame on its Mobod (many identity poses).
+ - The pose X_BF of every Frame F fixed to a Mobod B (many identity poses).
+ - the SpatialInertia M_LLo_L of each link L in its own frame L.
+ - the SpatialInertia M_BBo_B of each mobilized body B in its own frame B
+   (a composite if multiple links are on Mobod B)
+
+Since FixedOffsetFrame body poses are parameterized, and given with respect to a
+parent frame P which may itself be a parameterized FixedOffsetFrame, we need to
+precalculate X_BF once the parameters have been set so that we don't have to do
+that calculation repeatedly at runtime. We also precalculate the inverse X_FB
+since that is often needed as well, and record whether X_BF (and of course X_FB)
+is the identity transform, for use in runtime optimizations.
 
 Every Frame is allocated one slot here and the index of that slot (which we
 refer to as `body_pose_index` in this class) is stored in the Frame object for
@@ -29,6 +44,7 @@ have identity poses by definition, they all share a single entry (the 0th) here
 to permit getting the body pose of any Frame efficiently in cases where you
 don't know what kind of Frame you have. Of course if you know you are working
 with RigidBodyFrames you don't have to use this cache.
+
 @tparam_default_scalar */
 template <typename T>
 class FrameBodyPoseCache {
