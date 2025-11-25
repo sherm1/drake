@@ -882,6 +882,9 @@ class RigidBody : public MultibodyElement<T> {
 template <typename T>
 using Body = RigidBody<T>;
 
+template <typename T>
+using Link = RigidBody<T>;
+
 }  // namespace multibody
 }  // namespace drake
 
