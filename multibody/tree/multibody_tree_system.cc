@@ -100,7 +100,7 @@ void MultibodyTreeSystem<T>::SetDefaultParameters(
         .SetDefaultParameters(parameters);
   }
   // Bodies.
-  for (BodyIndex body_index(0); body_index < tree_->num_bodies();
+  for (BodyIndex body_index(0); body_index < tree_->num_links();
        ++body_index) {
     internal_tree().get_body(body_index).SetDefaultParameters(parameters);
   }
@@ -157,7 +157,7 @@ void MultibodyTreeSystem<T>::DeclareMultibodyElementParameters(
         .DeclareParameters(this);
   }
   // Bodies.
-  for (BodyIndex body_index(0); body_index < tree_->num_bodies();
+  for (BodyIndex body_index(0); body_index < tree_->num_links();
        ++body_index) {
     mutable_tree().get_mutable_body(body_index).DeclareParameters(this);
   }
@@ -260,11 +260,11 @@ void MultibodyTreeSystem<T>::Finalize() {
               {position_kinematics_cache_entry().ticket()})
           .cache_index();
 
-  // Allocate cache entry to store spatial inertia M_B_W(q) for each body.
+  // Allocate cache entry to store spatial inertia M_B_W(q) for each mobod.
   cache_indexes_.spatial_inertia_in_world =
       this->DeclareCacheEntry(
-              std::string("spatial inertia in world (M_B_W)"),
-              std::vector<SpatialInertia<T>>(internal_tree().num_bodies(),
+              std::string("mobod spatial inertia in world (M_B_W)"),
+              std::vector<SpatialInertia<T>>(internal_tree().num_mobods(),
                                              SpatialInertia<T>::NaN()),
               &MultibodyTreeSystem<T>::CalcSpatialInertiasInWorld,
               {position_kinematics_cache_entry().ticket()})
@@ -273,8 +273,8 @@ void MultibodyTreeSystem<T>::Finalize() {
   // Allocate cache entry for composite-body inertias K_BBo_W(q) for each body.
   cache_indexes_.composite_body_inertia_in_world =
       this->DeclareCacheEntry(
-              std::string("composite body inertia in world (K_BBo_W)"),
-              std::vector<SpatialInertia<T>>(internal_tree().num_bodies(),
+              std::string("composite mobod inertia in world (K_BBo_W)"),
+              std::vector<SpatialInertia<T>>(internal_tree().num_mobods(),
                                              SpatialInertia<T>::NaN()),
               &MultibodyTreeSystem<T>::CalcCompositeBodyInertiasInWorld,
               {position_kinematics_cache_entry().ticket()})
@@ -294,8 +294,8 @@ void MultibodyTreeSystem<T>::Finalize() {
   // Allocate cache entry to store Fb_Bo_W(q, v) for each body.
   cache_indexes_.dynamic_bias =
       this->DeclareCacheEntry(
-              std::string("dynamic bias (Fb_Bo_W)"),
-              std::vector<SpatialForce<T>>(internal_tree().num_bodies()),
+              std::string("mobod dynamic bias (Fb_Bo_W)"),
+              std::vector<SpatialForce<T>>(internal_tree().num_mobods()),
               &MultibodyTreeSystem<T>::CalcDynamicBiasForces,
               // The computation of Fb_Bo_W(q, v) requires updated values of
               // M_Bo_W(q) and V_WB(q, v). We make these prerequisites explicit.
@@ -330,7 +330,7 @@ void MultibodyTreeSystem<T>::Finalize() {
   cache_indexes_.spatial_acceleration_bias =
       this->DeclareCacheEntry(
               std::string("spatial acceleration bias (Ab_WB)"),
-              std::vector<SpatialAcceleration<T>>(internal_tree().num_bodies()),
+              std::vector<SpatialAcceleration<T>>(internal_tree().num_links()),
               &MultibodyTreeSystem<T>::CalcSpatialAccelerationBias,
               {position_ticket, velocity_ticket, this->all_parameters_ticket()})
           .cache_index();
@@ -338,7 +338,7 @@ void MultibodyTreeSystem<T>::Finalize() {
   cache_indexes_.articulated_body_force_bias =
       this->DeclareCacheEntry(
               std::string("ABI force bias cache (Zb_Bo_W)"),
-              std::vector<SpatialForce<T>>(internal_tree().num_bodies()),
+              std::vector<SpatialForce<T>>(internal_tree().num_links()),
               &MultibodyTreeSystem<T>::CalcArticulatedBodyForceBias,
               {position_ticket, velocity_ticket, this->all_parameters_ticket()})
           .cache_index();
