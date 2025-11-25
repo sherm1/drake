@@ -41,7 +41,7 @@ GTEST_TEST(JointActuatorTest, JointActuatorLimitTest) {
   // Add a prismatic joint between the world and body1:
   const Joint<double>& body1_world =
       tree.AddJoint(std::make_unique<PrismaticJoint<double>>(
-          "prism1", tree.world_body().body_frame(), body1->body_frame(),
+          "prism1", tree.world_link().body_frame(), body1->body_frame(),
           Eigen::Vector3d(0, 0, 1)));
 
   tree.AddJointActuator("act1", body1_world, kPositiveEffortLimit);
@@ -73,7 +73,7 @@ GTEST_TEST(JointActuatorTest, JointActuatorLimitTest) {
   const auto body4 = &tree.AddRigidBody("body4", M_NaN());
   const Joint<double>& body4_world =
       tree.AddJoint(std::make_unique<PlanarJoint<double>>(
-          "planar4", tree.world_body().body_frame(), body4->body_frame(),
+          "planar4", tree.world_link().body_frame(), body4->body_frame(),
           Eigen::Vector3d{0, 0, 0.1}));
 
   const auto& actuator4 =
@@ -103,7 +103,7 @@ JointActuator<double>& AddBodyJointAndActuator(
   const auto& body = tree->AddRigidBody("body1", M_NaN());
   const Joint<double>& joint =
       tree->AddJoint(std::make_unique<PrismaticJoint<double>>(
-          "joint1", tree->world_body().body_frame(), body.body_frame(),
+          "joint1", tree->world_link().body_frame(), body.body_frame(),
           Eigen::Vector3d(0, 0, 1)));
   tree->AddJointActuator("actuator1", joint, kPositiveEffortLimit);
   return tree->get_mutable_joint_actuator(
@@ -192,7 +192,7 @@ GTEST_TEST(JointActuatorTest, RemoveJointActuatorTest) {
   // Add a prismatic joint between the world and body1:
   const Joint<double>& body1_world =
       tree.AddJoint(std::make_unique<PrismaticJoint<double>>(
-          "prism1", tree.world_body().body_frame(), body1->body_frame(),
+          "prism1", tree.world_link().body_frame(), body1->body_frame(),
           Eigen::Vector3d(0, 0, 1)));
   const JointActuator<double>& actuator1 =
       tree.AddJointActuator("act1", body1_world, kPositiveEffortLimit);
@@ -213,7 +213,7 @@ GTEST_TEST(JointActuatorTest, RemoveJointActuatorTest) {
 
   const Joint<double>& body4_world =
       tree.AddJoint(std::make_unique<PrismaticJoint<double>>(
-          "prism4", tree.world_body().body_frame(), body4->body_frame(),
+          "prism4", tree.world_link().body_frame(), body4->body_frame(),
           Eigen::Vector3d(0, 0, 1)));
   const JointActuator<double>& actuator4 =
       tree.AddJointActuator("act4", body4_world, kPositiveEffortLimit);

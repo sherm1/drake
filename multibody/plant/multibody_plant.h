@@ -1249,6 +1249,10 @@ class MultibodyPlant final : public internal::MultibodyTreeSystem<T> {
   const systems::OutputPort<T>& get_generalized_contact_forces_output_port(
       ModelInstanceIndex model_instance) const;
 
+  // TODO(sherm1) Modify the next comment to explain that unmodeled joints will
+  //  have NaN reaction force entries here. (Joints can be unmodeled because
+  //  they were removed or because they are internal to a composite body.)
+
   /// Returns the port for joint reaction forces.
   /// A Joint models the kinematical relationship which characterizes the
   /// possible relative motion between two bodies. In Drake, a joint connects a
@@ -5140,7 +5144,7 @@ class MultibodyPlant final : public internal::MultibodyTreeSystem<T> {
 
   /// Returns a constant reference to the *world* body.
   const RigidBody<T>& world_body() const {
-    return internal_tree().world_body();
+    return internal_tree().world_link();
   }
 
   /// Returns a constant reference to the *world* frame.
@@ -5151,7 +5155,7 @@ class MultibodyPlant final : public internal::MultibodyTreeSystem<T> {
   /// Returns the number of RigidBody elements in the model, including the
   /// "world" RigidBody, which is always part of the model.
   /// @see AddRigidBody().
-  int num_bodies() const { return internal_tree().num_bodies(); }
+  int num_bodies() const { return internal_tree().num_links(); }
 
   /// Returns `true` if plant has a rigid body with unique index `body_index`.
   bool has_body(BodyIndex body_index) const {

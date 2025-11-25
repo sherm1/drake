@@ -1451,7 +1451,6 @@ void MultibodyPlant<T>::SetBaseBodyJointType(
 template <typename T>
 void MultibodyPlant<T>::SetCombineWeldedBodies(
     bool combine, std::optional<ModelInstanceIndex> model_instance) {
-  DRAKE_THROW_UNLESS(!is_finalized());
   internal::LinkJointGraph& graph = mutable_tree().mutable_graph();
 
   // Obtain the current option flag to preserve the ones that don't have
