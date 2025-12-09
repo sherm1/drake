@@ -1345,7 +1345,7 @@ void MultibodyPlant<T>::CalcSpatialAccelerationsFromVdot(
     // Make sure there aren't any inactives for now.
     DRAKE_DEMAND(ssize(mobod.follower_link_ordinals()) == 1);
     const BodyIndex active_link_index =
-        forest.links(mobod.link_ordinal()).index();
+        forest.links(mobod.active_link_ordinal()).index();
     (*A_WB_array)[active_link_index] = A_WB_array_mobod[mobod.index()];
   }
 }
@@ -1413,106 +1413,29 @@ template <typename T>
 void MultibodyPlant<T>::SetBaseBodyJointType(
     BaseBodyJointType joint_type,
     std::optional<ModelInstanceIndex> model_instance) {
-  DRAKE_THROW_UNLESS(!is_finalized());
-  internal::LinkJointGraph& graph = mutable_tree().mutable_graph();
-
-  // Obtain the current option flags to preserve the ones that don't have
-  // to do with base body joints.
-  internal::ForestBuildingOptions options =
-      model_instance.has_value()
-          ? graph.get_forest_building_options_in_use(*model_instance)
-          : graph.get_global_forest_building_options();
-
-  // Clear the existing relevant settings. This leaves us with the default
-  // which is to use quaternion floating joints for base bodies.
-  options = options & ~internal::ForestBuildingOptions::kUseRpyFloatingJoints;
-  options = options & ~internal::ForestBuildingOptions::kUseFixedBase;
-
-  switch (joint_type) {
-    case BaseBodyJointType::kQuaternionFloatingJoint:
-      // Nothing to do here; this is the default.
-      break;
-    case BaseBodyJointType::kRpyFloatingJoint:
-      options =
-          options | internal::ForestBuildingOptions::kUseRpyFloatingJoints;
-      break;
-    case BaseBodyJointType::kWeldJoint:
-      options = options | internal::ForestBuildingOptions::kUseFixedBase;
-      break;
-  }
-
-  if (model_instance.has_value()) {
-    graph.SetForestBuildingOptions(*model_instance, options);
-  } else {
-    graph.SetGlobalForestBuildingOptions(options);
-  }
+  mutable_tree().SetBaseBodyJointType(joint_type, model_instance);
 }
 
 template <typename T>
 void MultibodyPlant<T>::SetCombineWeldedBodies(
     bool combine, std::optional<ModelInstanceIndex> model_instance) {
-  internal::LinkJointGraph& graph = mutable_tree().mutable_graph();
-
-  // Obtain the current option flag to preserve the ones that don't have
-  // to do with combining rigid bodies.
-  internal::ForestBuildingOptions options =
-      model_instance.has_value()
-          ? graph.get_forest_building_options_in_use(*model_instance)
-          : graph.get_global_forest_building_options();
-
-  // Clear the existing setting. This leaves us with the default which is _not_
-  // to combine welded bodies.
-  options = options &
-            ~internal::ForestBuildingOptions::kOptimizeWeldedLinksAssemblies;
-
-  if (combine) {
-    options = options |
-              internal::ForestBuildingOptions::kOptimizeWeldedLinksAssemblies;
-  }
-
-  if (model_instance.has_value()) {
-    graph.SetForestBuildingOptions(*model_instance, options);
-  } else {
-    graph.SetGlobalForestBuildingOptions(options);
-  }
+  mutable_tree().SetCombineWeldedBodies(combine, model_instance);
 }
 
 template <typename T>
 BaseBodyJointType MultibodyPlant<T>::GetBaseBodyJointType(
     std::optional<ModelInstanceIndex> model_instance) const {
-  const internal::LinkJointGraph& graph = internal_tree().graph();
-  const internal::ForestBuildingOptions options =
-      model_instance.has_value()
-          ? graph.get_forest_building_options_in_use(*model_instance)
-          : graph.get_global_forest_building_options();
-  if (static_cast<bool>(options &
-                        internal::ForestBuildingOptions::kUseRpyFloatingJoints))
-    return BaseBodyJointType::kRpyFloatingJoint;
-  if (static_cast<bool>(options &
-                        internal::ForestBuildingOptions::kUseFixedBase))
-    return BaseBodyJointType::kWeldJoint;
-  return BaseBodyJointType::kQuaternionFloatingJoint;
+  return internal_tree().GetBaseBodyJointType(model_instance);
 }
 
 template <typename T>
 bool MultibodyPlant<T>::GetCombineWeldedBodies(
     std::optional<ModelInstanceIndex> model_instance) const {
-  const internal::LinkJointGraph& graph = internal_tree().graph();
-  const internal::ForestBuildingOptions options =
-      model_instance.has_value()
-          ? graph.get_forest_building_options_in_use(*model_instance)
-          : graph.get_global_forest_building_options();
-
-  return static_cast<bool>(
-      options &
-      internal::ForestBuildingOptions::kOptimizeWeldedLinksAssemblies);
+  return internal_tree().GetCombineWeldedBodies(model_instance);
 }
 
 template <typename T>
 void MultibodyPlant<T>::Finalize() {
-  // TODO(sherm1) This is a temporary hack during development!
-  SetCombineWeldedBodies(true);
-
   // After finalizing the base class, tree is read-only.
   internal::MultibodyTreeSystem<T>::Finalize();
 

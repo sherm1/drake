@@ -58,6 +58,16 @@ enum class JacobianWrtVariable {
   kV      ///< J = ∂V/∂v
 };
 
+/// The kind of joint to be used to connect base bodies to world at Finalize().
+/// See @ref mbp_working_with_free_bodies "Working with free bodies"
+/// for definitions and discussion.
+/// @see SetBaseBodyJointType() for details.
+enum class BaseBodyJointType {
+  kQuaternionFloatingJoint,  ///< 6 dofs, unrestricted orientation.
+  kRpyFloatingJoint,         ///< 6 dofs using 3 angles; has singularity.
+  kWeldJoint,                ///< 0 dofs, fixed to World.
+};
+
 /// @cond
 // Helper macro to throw an exception within methods that should not be called
 // post-finalize.
@@ -937,6 +947,23 @@ class MultibodyTree {
   [[nodiscard]] const SpanningForest::Mobod& get_mobod(MobodIndex index) const {
     return forest().mobods(index);
   }
+
+  // See MultibodyPlant API.
+  void SetBaseBodyJointType(
+      BaseBodyJointType joint_type,
+      std::optional<ModelInstanceIndex> model_instance = {});
+
+  // See MultibodyPlant API.
+  void SetCombineWeldedBodies(
+      bool combine, std::optional<ModelInstanceIndex> model_instance = {});
+
+  // See MultibodyPlant API.
+  BaseBodyJointType GetBaseBodyJointType(
+      std::optional<ModelInstanceIndex> model_instance = {}) const;
+
+  // See MultibodyPlant API.
+  bool GetCombineWeldedBodies(
+      std::optional<ModelInstanceIndex> model_instance = {}) const;
 
   // Finalize() must be called after all user-defined elements in the plant
   // (joints, bodies, force elements, constraints, etc.) have been added and

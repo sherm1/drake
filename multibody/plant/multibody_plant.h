@@ -241,16 +241,6 @@ enum class DiscreteContactApproximation {
   kLagged,
 };
 
-/// The kind of joint to be used to connect base bodies to world at Finalize().
-/// See @ref mbp_working_with_free_bodies "Working with free bodies"
-/// for definitions and discussion.
-/// @see SetBaseBodyJointType() for details.
-enum class BaseBodyJointType {
-  kQuaternionFloatingJoint,  ///< 6 dofs, unrestricted orientation.
-  kRpyFloatingJoint,         ///< 6 dofs using 3 angles; has singularity.
-  kWeldJoint,                ///< 0 dofs, fixed to World.
-};
-
 /// @cond
 // Helper macro to throw an exception within methods that should not be called
 // post-finalize.

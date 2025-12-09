@@ -741,13 +741,12 @@ void MultibodyTree<T>::SetVelocitiesInArray(
 
 /* Create Joint implementations from the already-built SpanningForest. Joints
 are implemented with a Mobilizer (either forward or reversed), unless they are
-welds between Links that were merged onto a single Mobod. We visit the forest's
-mobilized bodies (Mobods) in depth-first order and create Mobilizers in the same
-order as Mobods. We make a stub 0th Mobilizer for World so that Mobilizers and
-Mobods are numbered identically. (Think of it as a weld of World to the
-universe.) Joints that are interior to optimized WeldedLinksAssemblies
-(composite bodies) won't get modeled at all since they don't appear in the
-forest. */
+welds between Links that were merged onto a composite Mobod. We visit the
+forest's mobilized bodies (Mobods) in depth-first order and create Mobilizers in
+the same order as Mobods. We make a stub 0th Mobilizer for World so that
+Mobilizers and Mobods are numbered identically. (Think of it as a weld of World
+to the universe.) Joints in WeldedLinksAssemblies that are interior to composite
+Mobods won't get modeled at all since they don't appear in the forest. */
 template <typename T>
 void MultibodyTree<T>::CreateJointImplementations() {
   DRAKE_DEMAND(!is_finalized());
@@ -771,8 +770,12 @@ void MultibodyTree<T>::CreateJointImplementations() {
       continue;
     }
 
+    // N.B. If `mobod` is composite, this is the modeled ("active") joint that
+    // connects it to its inboard Mobod. The joint connects a frame on `mobod`s
+    // active link to a frame on _some_ link of the inboard mobod (not
+    // necessarily its active link).
     const JointIndex joint_index =
-        forest().joints(mobod.joint_ordinal()).index();
+        forest().joints(mobod.active_joint_ordinal()).index();
     Joint<T>& joint = joints_.get_mutable_element(joint_index);
 
     // We allow reversed mobilizers only for a subset of joint types.
@@ -823,8 +826,7 @@ const Mobilizer<T>& MultibodyTree<T>::GetFreeBodyMobilizerOrThrow(
 
 template <typename T>
 const Frame<T>& MultibodyTree<T>::AddOrGetJointFrame(
-    const RigidBody<T>& body,
-    const std::optional<math::RigidTransform<double>>& X_BF,
+    const RigidBody<T>& body, const std::optional<RigidTransform<double>>& X_BF,
     ModelInstanceIndex joint_instance, std::string_view joint_name,
     std::string_view frame_suffix) {
   if (X_BF.has_value()) {
@@ -901,6 +903,97 @@ void MultibodyTree<T>::FinalizeInternals() {
 }
 
 template <typename T>
+void MultibodyTree<T>::SetBaseBodyJointType(
+    BaseBodyJointType joint_type,
+    std::optional<ModelInstanceIndex> model_instance) {
+  DRAKE_THROW_UNLESS(!is_finalized());
+  LinkJointGraph& graph = mutable_graph();
+
+  // Obtain the current option flags to preserve the ones that don't have
+  // to do with base body joints.
+  ForestBuildingOptions options =
+      model_instance.has_value()
+          ? graph.get_forest_building_options_in_use(*model_instance)
+          : graph.get_global_forest_building_options();
+
+  // Clear the existing relevant settings. This leaves us with the default
+  // which is to use quaternion floating joints for base bodies.
+  options = options & ~ForestBuildingOptions::kUseRpyFloatingJoints;
+  options = options & ~ForestBuildingOptions::kUseFixedBase;
+
+  switch (joint_type) {
+    case BaseBodyJointType::kQuaternionFloatingJoint:
+      // Nothing to do here; this is the default.
+      break;
+    case BaseBodyJointType::kRpyFloatingJoint:
+      options = options | ForestBuildingOptions::kUseRpyFloatingJoints;
+      break;
+    case BaseBodyJointType::kWeldJoint:
+      options = options | ForestBuildingOptions::kUseFixedBase;
+      break;
+  }
+
+  if (model_instance.has_value()) {
+    graph.SetForestBuildingOptions(*model_instance, options);
+  } else {
+    graph.SetGlobalForestBuildingOptions(options);
+  }
+}
+
+template <typename T>
+void MultibodyTree<T>::SetCombineWeldedBodies(
+    bool combine, std::optional<ModelInstanceIndex> model_instance) {
+  LinkJointGraph& graph = mutable_graph();
+
+  // Obtain the current option flag to preserve the ones that don't have
+  // to do with combining rigid bodies.
+  ForestBuildingOptions options =
+      model_instance.has_value()
+          ? graph.get_forest_building_options_in_use(*model_instance)
+          : graph.get_global_forest_building_options();
+
+  // Clear the existing setting. This leaves us with the default which is _not_
+  // to combine welded bodies.
+  options = options & ~ForestBuildingOptions::kOptimizeWeldedLinksAssemblies;
+
+  if (combine) {
+    options = options | ForestBuildingOptions::kOptimizeWeldedLinksAssemblies;
+  }
+
+  if (model_instance.has_value()) {
+    graph.SetForestBuildingOptions(*model_instance, options);
+  } else {
+    graph.SetGlobalForestBuildingOptions(options);
+  }
+}
+
+template <typename T>
+BaseBodyJointType MultibodyTree<T>::GetBaseBodyJointType(
+    std::optional<ModelInstanceIndex> model_instance) const {
+  const ForestBuildingOptions options =
+      model_instance.has_value()
+          ? graph().get_forest_building_options_in_use(*model_instance)
+          : graph().get_global_forest_building_options();
+  if (static_cast<bool>(options & ForestBuildingOptions::kUseRpyFloatingJoints))
+    return BaseBodyJointType::kRpyFloatingJoint;
+  if (static_cast<bool>(options & ForestBuildingOptions::kUseFixedBase))
+    return BaseBodyJointType::kWeldJoint;
+  return BaseBodyJointType::kQuaternionFloatingJoint;
+}
+
+template <typename T>
+bool MultibodyTree<T>::GetCombineWeldedBodies(
+    std::optional<ModelInstanceIndex> model_instance) const {
+  const ForestBuildingOptions options =
+      model_instance.has_value()
+          ? graph().get_forest_building_options_in_use(*model_instance)
+          : graph().get_global_forest_building_options();
+
+  return static_cast<bool>(
+      options & ForestBuildingOptions::kOptimizeWeldedLinksAssemblies);
+}
+
+template <typename T>
 void MultibodyTree<T>::Finalize() {
   DRAKE_MBT_THROW_IF_FINALIZED();
 
@@ -971,8 +1064,7 @@ void MultibodyTree<T>::Finalize() {
           LinkJointGraph::weld_joint_traits_index()) {
         return AddEphemeralJoint<WeldJoint>(
             added_joint.name(), world_link(),
-            get_body(added_joint.child_link_index()),
-            math::RigidTransform<double>());
+            get_body(added_joint.child_link_index()), RigidTransform<double>());
       }
       DRAKE_UNREACHABLE();
     }();
@@ -997,7 +1089,7 @@ template <typename T>
 void MultibodyTree<T>::CreateBodyNode(MobodIndex mobod_index) {
   const SpanningForest::Mobod& mobod = forest().mobods(mobod_index);
   const LinkJointGraph::Link& active_link =
-      forest().links(mobod.link_ordinal());
+      forest().links(mobod.active_link_ordinal());
   const BodyIndex body_index = active_link.index();
 
   const RigidBody<T>& body = links_.get_element(body_index);
@@ -1007,7 +1099,7 @@ void MultibodyTree<T>::CreateBodyNode(MobodIndex mobod_index) {
   if (body_index == world_index()) {
     body_node = std::make_unique<BodyNodeWorld<T>>(&world_link(), mobilizer);
   } else {
-    BodyNode<T>* parent_node = body_nodes_[mobod.inboard()].get();
+    BodyNode<T>* parent_node = body_nodes_[mobod.inboard_mobod()].get();
 
     // Only the mobilizer knows how to create a BodyNode with compile-time
     // fixed sizes.
@@ -1366,7 +1458,7 @@ void MultibodyTree<T>::CalcBlockSystemJacobianCache(
     // Note: Tree mobods never include World.
     for (const SpanningForest::Mobod& mobod : tree) {
       const MobodIndex index_B = mobod.index();
-      const MobodIndex index_P = mobod.inboard();
+      const MobodIndex index_P = mobod.inboard_mobod();
       const SpanningForest::Mobod& parent = forest().mobods(index_P);
       const Vector3<T>& p_PoBo_W = pc.get_p_PoBo_W(index_B);
       const int row_B = 6 * (index_B - base_index);
@@ -1388,7 +1480,7 @@ void MultibodyTree<T>::CalcBlockSystemJacobianCache(
           Jvi_V_WB.template head<3>() = w_WP;
           Jvi_V_WB.template tail<3>() = v_WP + w_WP.cross(p_PoBo_W);
         }
-        ancestor = &forest().mobods(ancestor->inboard());
+        ancestor = &forest().mobods(ancestor->inboard_mobod());
       }
       // Parent contributions are done, just need to fill in the local
       // contribution from H_PB_W.
@@ -1501,25 +1593,104 @@ void MultibodyTree<T>::CalcFrameBodyPoses(
     FrameBodyPoseCache<T>* frame_body_poses) const {
   DRAKE_DEMAND(frame_body_poses != nullptr);
 
-  // All RigidBodyFrames share this entry which is set once and forever.
-  DRAKE_ASSERT(frame_body_poses->get_X_BF(0).IsExactlyIdentity());
-  DRAKE_ASSERT(frame_body_poses->get_X_FB(0).IsExactlyIdentity());
-
-  // The first pass locates each frame with respect to the body frame B
-  // of the body to which it is fixed.
+  // Pass 1 (over all frames): locate each frame by its pose X_LF with respect
+  // to the link frame L of the Link (RigidBody) to which it is fixed.
   for (const Frame<T>* frame : frames_.elements()) {
-    const int body_pose_index_in_cache = frame->get_body_pose_index_in_cache();
-    if (frame->is_body_frame()) {
-      DRAKE_DEMAND(body_pose_index_in_cache == 0);
-      continue;
-    }
     // TODO(sherm1) Note that we're unnecessarily recalculating the parent
     //  and ancestor poses. Likely OK since we expect short sequences and
     //  the whole computation is done only when parameters change. But if
     //  there is a performance issue, consider doing this in topological
     //  order (or memoizing) so we don't have to recalculate.
-    frame_body_poses->SetX_BF(body_pose_index_in_cache,
-                              frame->CalcPoseInBodyFrame(context));
+    const RigidTransform<T> X_LF = frame->CalcPoseInBodyFrame(context);
+    frame_body_poses->SetX_LF(frame->index(), X_LF);
+  }
+
+  // Pass 2 (over all mobods): find the pose X_BL of each Link frame L on its
+  // Mobod B. This is normally identity except if B is a composite mobod and L
+  // is not its active (most inboard) link.
+  std::vector<uint8_t> got_X_BL(num_links(), false);
+  for (const SpanningForest::Mobod& mobod : forest().mobods()) {
+    const LinkOrdinal active_link_ordinal = mobod.active_link_ordinal();
+    frame_body_poses->SetX_BL(active_link_ordinal,
+                              RigidTransform<T>::Identity());
+    got_X_BL[active_link_ordinal] = true;
+    if (!mobod.is_composite()) continue;
+
+    // Now run through the rest of the links following `mobod`, which are
+    // supposed to be in inboard->outboard order (starting with the active link
+    // that we just did above). For each follower link Lₒ we
+    // should be able to find an attached weld joint where the other (inboard)
+    // link Lᵢ already has a calculated X_BLᵢ. In that case we can use the
+    // weld's transform X_JᵢJₒ and connected frame poses X_LᵢJᵢ and X_LₒJₒ
+    // (just calculated above) to compute
+    //     X_BLₒ = X_BLᵢ * X_LᵢJᵢ * X_JᵢJₒ * (X_LₒJₒ)⁻¹
+    // This is complicated by the fact that the weld joint is expressed as
+    // connecting a parent link P and child link C. Usually Lᵢ=P and Lₒ=C but
+    // the joint may be reversed such that Lᵢ=C and Lₒ=P.
+    for (const LinkOrdinal& link_ordinal : mobod.follower_link_ordinals()) {
+      if (got_X_BL[link_ordinal]) continue;  // Already done.
+      const LinkJointGraph::Link& link_Lo = graph().links(link_ordinal);
+
+      // Search for the weld joint connecting Lₒ to an inboard link Lᵢ.
+      for (JointIndex joint_index : link_Lo.joints()) {
+        const LinkJointGraph::Joint& graph_joint =
+            graph().joint_by_index(joint_index);
+        if (!graph_joint.is_weld()) continue;  // Wrong joint type.
+
+        // We have a weld joint. If it connects to to a link we haven't yet
+        // processed it is an outboard joint; skip it for now.
+        const LinkIndex link_Li_index =
+            graph_joint.other_link_index(link_Lo.index());
+        const LinkJointGraph::Link& link_Li =
+            graph().link_by_index(link_Li_index);
+        if (!got_X_BL[link_Li.ordinal()]) continue;  // Wrong joint.
+
+        const RigidTransform<T>& X_BLi =
+            frame_body_poses->get_X_BL(link_Li.ordinal());
+
+        // We have found the weld joint connecting known-location Lᵢ to
+        // our unknown-location Lₒ.
+        const bool is_reversed =
+            graph_joint.child_link_index() != link_Lo.index();
+
+        const WeldJoint<T>& weld_joint =
+            dynamic_cast<const WeldJoint<T>&>(get_joint(joint_index));
+        const math::RigidTransformd& X_JpJc = weld_joint.X_FM();
+        const RigidTransform<T> X_JiJo =
+            (is_reversed ? X_JpJc.inverse() : X_JpJc).cast<T>();
+        const Frame<T>& frame_Ji = is_reversed ? weld_joint.frame_on_child()
+                                               : weld_joint.frame_on_parent();
+        const Frame<T>& frame_Jo = is_reversed ? weld_joint.frame_on_parent()
+                                               : weld_joint.frame_on_child();
+
+        // Get the frame poses we calculated above.
+        const RigidTransform<T>& X_LiJi =
+            frame_body_poses->get_X_LF(frame_Ji.index());
+        const RigidTransform<T>& X_LoJo =
+            frame_body_poses->get_X_LF(frame_Jo.index());
+
+        const RigidTransform<T> X_BLo =
+            X_BLi * X_LiJi * X_JiJo * X_LoJo.inverse();
+        frame_body_poses->SetX_BL(link_ordinal, X_BLo);
+        got_X_BL[link_ordinal] = true;
+        break;  // Done with this follower link.
+      }
+    }
+  }
+
+  // TODO(sherm1) Pass 2b could be removed or Debug-only.
+  // Pass 2b (over all links): sanity check that Pass 2 got X_BL for every link.
+  for (const Link<T>* link : links_.elements()) {
+    DRAKE_DEMAND(got_X_BL[link->ordinal()]);
+  }
+
+  // Pass 3 (over all frames again): locates each frame with respect to the
+  // mobod frame B of the mobod that its link follows, i.e. X_BF = X_BL * X_LF.
+  for (const Frame<T>* frame : frames_.elements()) {
+    const RigidTransform<T>& X_LF = frame_body_poses->get_X_LF(frame->index());
+    const Link<T>& link = frame->body();
+    const RigidTransform<T>& X_BL = frame_body_poses->get_X_BL(link.ordinal());
+    frame_body_poses->SetX_BF(frame->index(), X_BL * X_LF);
   }
 
   // For every mobilized body, precalculate its body-frame spatial inertia
@@ -1530,11 +1701,28 @@ void MultibodyTree<T>::CalcFrameBodyPoses(
     DRAKE_DEMAND(ssize(mobod.follower_link_ordinals()) == 1);
     const Mobilizer<T>& mobilizer = get_mobilizer(mobod.index());
 
+    // Zero out the Mobod's mass properties. We'll build these up for
+    // composites.
+    frame_body_poses->SetM_BBo_B(mobod.index(), SpatialInertia<T>::Zero());
+
     // Get the parameterized spatial inertia.
-    const RigidBody<T>& body = mobilizer.outboard_body();
-    const SpatialInertia<T> M_BBo_B =
-        body.CalcSpatialInertiaInBodyFrame(context);
-    frame_body_poses->SetM_BBo_B(mobod.index(), M_BBo_B);
+    const RigidBody<T>& link = mobilizer.outboard_body();
+    const SpatialInertia<T> M_LLo_L =
+        link.CalcSpatialInertiaInBodyFrame(context);
+    frame_body_poses->SetM_LLo_L(link.ordinal(), M_LLo_L);
+
+    if (!frame_body_poses->is_X_BL_identity(link.ordinal())) {
+      const RigidTransform<T>& X_BL =
+          frame_body_poses->get_X_BL(link.ordinal());
+      const math::RotationMatrix<T>& R_BL = X_BL.rotation();
+      const Vector3<T>& p_BL_B = X_BL.translation();
+      const SpatialInertia<T> M_LLo_B = M_LLo_L.ReExpress(R_BL);
+      const SpatialInertia<T> M_LBo_B = M_LLo_B.Shift(-p_BL_B);
+      frame_body_poses->AddToM_BBo_B(mobod.index(), M_LBo_B);
+    } else {
+      const SpatialInertia<T>& M_LBo_B = M_LLo_L;
+      frame_body_poses->AddToM_BBo_B(mobod.index(), M_LBo_B);
+    }
   }
 }
 
@@ -2081,9 +2269,9 @@ RigidTransform<T> MultibodyTree<T>::CalcRelativeTransform(
   // Find each Frame's pose on its own body (F on A, G on B).
   const FrameBodyPoseCache<T>& frame_body_pose_cache =
       EvalFrameBodyPoses(context);
-  const math::RigidTransform<T>& X_AF =
+  const RigidTransform<T>& X_AF =
       frame_F.get_X_BF(frame_body_pose_cache);  // B==A
-  const math::RigidTransform<T>& X_BG =
+  const RigidTransform<T>& X_BG =
       frame_G.get_X_BF(frame_body_pose_cache);  // F==G
 
   // Find each body's pose in World.
@@ -3584,12 +3772,14 @@ void MultibodyTree<T>::ThrowDefaultMassInertiaError() const {
     // At this point we're looking at a non-World, terminal WeldedMobods group.
     // Find the matching WeldedLinksAssembly that carries the mass properties.
     const std::optional<WeldedLinksAssemblyIndex> link_assembly_index =
-        graph().links(active_mobod.link_ordinal()).welded_links_assembly();
+        graph()
+            .links(active_mobod.active_link_ordinal())
+            .welded_links_assembly();
     DRAKE_DEMAND(link_assembly_index.has_value());  // Should be an assembly!
     const auto& link_assembly =
         graph().welded_links_assemblies(*link_assembly_index);
     DRAKE_DEMAND(link_assembly.links()[0] ==
-                 graph().links(active_mobod.link_ordinal()).index());
+                 graph().links(active_mobod.active_link_ordinal()).index());
 
     ThrowIfTerminalBodyHasBadDefaultMassProperties(link_assembly.links(),
                                                    active_mobod.index());
@@ -3601,7 +3791,7 @@ void MultibodyTree<T>::ThrowDefaultMassInertiaError() const {
     if (!mobod.is_leaf_mobod()) continue;  // An interior Mobod.
 
     ThrowIfTerminalBodyHasBadDefaultMassProperties(
-        {graph().links(mobod.link_ordinal()).index()}, mobod.index());
+        {graph().links(mobod.active_link_ordinal()).index()}, mobod.index());
   }
 }
 
@@ -4251,11 +4441,11 @@ std::optional<BodyIndex> MultibodyTree<T>::MaybeGetUniqueBaseBodyIndex(
   // just one of those.
   const SpanningForest::Mobod& world = forest().world_mobod();
   std::optional<BodyIndex> base_body_index{};
-  for (const MobodIndex& base_mobod_index : world.outboards()) {
+  for (const MobodIndex& base_mobod_index : world.outboard_mobods()) {
     const SpanningForest::Mobod& base_mobod = forest().mobods(base_mobod_index);
     DRAKE_DEMAND(base_mobod.level() == 1);
     const LinkJointGraph::Link& active_link =
-        forest().links(base_mobod.link_ordinal());
+        forest().links(base_mobod.active_link_ordinal());
     if (active_link.model_instance() != model_instance) continue;
     if (base_body_index.has_value())  // Not unique if already set.
       return std::nullopt;
