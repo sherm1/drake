@@ -824,7 +824,7 @@ void BodyNodeImpl<T, ConcreteMobilizer>::
 
   // Get the spatial acceleration of the parent.
   const SpatialAcceleration<T>& A_WP =
-      ac->get_A_WB(mobilizer_->mobod().inboard());
+      ac->get_A_WB(mobilizer_->mobod().inboard_mobod());
 
   // Shift vector p_PoBo_W from the parent origin to the body origin.
   const Vector3<T>& p_PoBo_W = get_p_PoBo_W(pc);
