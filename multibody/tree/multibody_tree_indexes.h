@@ -35,6 +35,12 @@ using FrameIndex = TypeSafeIndex<class FrameTag>;
 /// plant. Interchangeable with LinkIndex.
 using BodyIndex = TypeSafeIndex<class RigidBodyTag>;
 
+/// This is a synonym for BodyIndex.
+using LinkIndex = BodyIndex;
+
+/// Type used to identify links by ordinal within a multibody plant.
+using LinkOrdinal = TypeSafeIndex<class LinkOrdinalTag>;
+
 /// Type used to identify force elements by index within a multibody plant.
 using ForceElementIndex = TypeSafeIndex<class ForceElementTag>;
 

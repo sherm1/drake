@@ -345,7 +345,7 @@ class TreeTopologyTests : public ::testing::Test {
     EXPECT_EQ(mobod.index(), mobod_index);
     mobod.HasFollower(link.ordinal());
 
-    const MobodIndex parent_mobod_index = mobod.inboard();
+    const MobodIndex parent_mobod_index = mobod.inboard_mobod();
     EXPECT_TRUE(parent_mobod_index.is_valid() ^ link.is_world());
 
     if (link.is_world()) return;
@@ -353,7 +353,8 @@ class TreeTopologyTests : public ::testing::Test {
     // Verify that the link's mobod is actually a child of its parent mobod.
     const SpanningForest::Mobod& parent_mobod =
         forest.mobods(parent_mobod_index);
-    const std::vector<MobodIndex>& child_mobods = parent_mobod.outboards();
+    const std::vector<MobodIndex>& child_mobods =
+        parent_mobod.outboard_mobods();
     EXPECT_TRUE(std::find(child_mobods.begin(), child_mobods.end(),
                           mobod_index) != child_mobods.end());
   }
@@ -397,7 +398,7 @@ class TreeTopologyTests : public ::testing::Test {
       const LinkOrdinal ordinal = forest.graph().index_to_ordinal(link_index);
       const LinkJointGraph::Link& link = forest.links(ordinal);
       const SpanningForest::Mobod& mobod = forest.mobods(link.mobod_index());
-      EXPECT_EQ(ssize(mobod.outboards()), num_outboards);
+      EXPECT_EQ(ssize(mobod.outboard_mobods()), num_outboards);
     }
 
     // Checks the correctness of each BodyNode associated with a Link.
@@ -419,7 +420,8 @@ class TreeTopologyTests : public ::testing::Test {
     for (const auto& [mobod_index, primary_link_index] :
          expected_mobod_to_link) {
       const SpanningForest::Mobod& mobod = forest.mobods(mobod_index);
-      const LinkJointGraph::Link& link = forest.links(mobod.link_ordinal());
+      const LinkJointGraph::Link& link =
+          forest.links(mobod.active_link_ordinal());
       EXPECT_EQ(link.index(), primary_link_index);
     }
 
@@ -507,7 +509,7 @@ TEST_F(TreeTopologyTests, SizesAndIndexing) {
   int positions_index = 0;
   int velocities_index = 0;
   for (const SpanningForest::Mobod& mobod : forest.mobods()) {
-    const LinkOrdinal active_link_ordinal = mobod.link_ordinal();
+    const LinkOrdinal active_link_ordinal = mobod.active_link_ordinal();
     const LinkJointGraph::Link active_link = forest.links(active_link_ordinal);
 
     EXPECT_EQ(active_link.mobod_index(), mobod.index());
@@ -612,7 +614,7 @@ TEST_F(TreeTopologyTests, KinematicPathFromWorld) {
     const MobodIndex expected_mobod_index =
         forest.link_by_index(body_index).mobod_index();
     const SpanningForest::Mobod& mobod = forest.mobods(expected_mobod_index);
-    EXPECT_EQ(forest.links(mobod.link_ordinal()).index(), body_index);
+    EXPECT_EQ(forest.links(mobod.active_link_ordinal()).index(), body_index);
     // Both expected and computed Mobods must be at the same level (depth) in
     // the tree.
     const int level = mobod.level();
