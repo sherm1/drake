@@ -1512,7 +1512,7 @@ bool MultibodyPlant<T>::GetCombineWeldedBodies(
 template <typename T>
 void MultibodyPlant<T>::Finalize() {
   // TODO(sherm1) This is a temporary hack during development!
-  SetCombineWeldedBodies(true);
+  // SetCombineWeldedBodies(true);
 
   // After finalizing the base class, tree is read-only.
   internal::MultibodyTreeSystem<T>::Finalize();

@@ -741,13 +741,12 @@ void MultibodyTree<T>::SetVelocitiesInArray(
 
 /* Create Joint implementations from the already-built SpanningForest. Joints
 are implemented with a Mobilizer (either forward or reversed), unless they are
-welds between Links that were merged onto a single Mobod. We visit the forest's
-mobilized bodies (Mobods) in depth-first order and create Mobilizers in the same
-order as Mobods. We make a stub 0th Mobilizer for World so that Mobilizers and
-Mobods are numbered identically. (Think of it as a weld of World to the
-universe.) Joints that are interior to optimized WeldedLinksAssemblies
-(composite bodies) won't get modeled at all since they don't appear in the
-forest. */
+welds between Links that were merged onto a composite Mobod. We visit the
+forest's mobilized bodies (Mobods) in depth-first order and create Mobilizers in
+the same order as Mobods. We make a stub 0th Mobilizer for World so that
+Mobilizers and Mobods are numbered identically. (Think of it as a weld of World
+to the universe.) Joints in WeldedLinksAssemblies that are interior to composite
+Mobods won't get modeled at all since they don't appear in the forest. */
 template <typename T>
 void MultibodyTree<T>::CreateJointImplementations() {
   DRAKE_DEMAND(!is_finalized());
@@ -771,6 +770,10 @@ void MultibodyTree<T>::CreateJointImplementations() {
       continue;
     }
 
+    // N.B. If `mobod` is composite, this is the modeled ("active") joint that
+    // connects it to its inboard Mobod. The joint connects a frame on `mobod`s
+    // active link to a frame on _some_ link of the inboard mobod (not
+    // necessarily its active link).
     const JointIndex joint_index =
         forest().joints(mobod.joint_ordinal()).index();
     Joint<T>& joint = joints_.get_mutable_element(joint_index);
@@ -1501,25 +1504,34 @@ void MultibodyTree<T>::CalcFrameBodyPoses(
     FrameBodyPoseCache<T>* frame_body_poses) const {
   DRAKE_DEMAND(frame_body_poses != nullptr);
 
-  // All RigidBodyFrames share this entry which is set once and forever.
-  DRAKE_ASSERT(frame_body_poses->get_X_BF(0).IsExactlyIdentity());
-  DRAKE_ASSERT(frame_body_poses->get_X_FB(0).IsExactlyIdentity());
+  // First, find the pose X_BL of each Link frame L on its Mobod B. This
+  // is normally identity except if B is a composite mobod and L is not its
+  // active (most inboard) link.
+  for (const Link<T>* link : links_.elements()) {
+    // TODO(sherm1) Assuming 1:1 Link:Mobod (no composites).
+    frame_body_poses->SetX_BL(link->index(),
+                              math::RigidTransform<T>::Identity());  // WRONG!
+  }
 
-  // The first pass locates each frame with respect to the body frame B
-  // of the body to which it is fixed.
+  // The first pass locates each frame with respect to the Link frame L
+  // of the link to which it is fixed.
   for (const Frame<T>* frame : frames_.elements()) {
-    const int body_pose_index_in_cache = frame->get_body_pose_index_in_cache();
-    if (frame->is_body_frame()) {
-      DRAKE_DEMAND(body_pose_index_in_cache == 0);
-      continue;
-    }
     // TODO(sherm1) Note that we're unnecessarily recalculating the parent
     //  and ancestor poses. Likely OK since we expect short sequences and
     //  the whole computation is done only when parameters change. But if
     //  there is a performance issue, consider doing this in topological
     //  order (or memoizing) so we don't have to recalculate.
-    frame_body_poses->SetX_BF(body_pose_index_in_cache,
-                              frame->CalcPoseInBodyFrame(context));
+    const math::RigidTransform<T> X_LF = frame->CalcPoseInBodyFrame(context);
+    frame_body_poses->SetX_LF(frame->index(), X_LF);
+    const Link<T>& link = frame->body();
+    if (!frame_body_poses->is_X_BL_identity(link.index())) {
+      const math::RigidTransform<T>& X_BL =
+          frame_body_poses->get_X_BL(link.index());
+      frame_body_poses->SetX_BF(frame->index(), X_BL * X_LF);
+    } else {
+      const math::RigidTransform<T>& X_BF = X_LF;
+      frame_body_poses->SetX_BF(frame->index(), X_BF);
+    }
   }
 
   // For every mobilized body, precalculate its body-frame spatial inertia
@@ -1530,11 +1542,28 @@ void MultibodyTree<T>::CalcFrameBodyPoses(
     DRAKE_DEMAND(ssize(mobod.follower_link_ordinals()) == 1);
     const Mobilizer<T>& mobilizer = get_mobilizer(mobod.index());
 
+    // Zero out the Mobod's mass properties. We'll build these up for
+    // composites.
+    frame_body_poses->SetM_BBo_B(mobod.index(), SpatialInertia<T>::Zero());
+
     // Get the parameterized spatial inertia.
-    const RigidBody<T>& body = mobilizer.outboard_body();
-    const SpatialInertia<T> M_BBo_B =
-        body.CalcSpatialInertiaInBodyFrame(context);
-    frame_body_poses->SetM_BBo_B(mobod.index(), M_BBo_B);
+    const RigidBody<T>& link = mobilizer.outboard_body();
+    const SpatialInertia<T> M_LLo_L =
+        link.CalcSpatialInertiaInBodyFrame(context);
+    frame_body_poses->SetM_LLo_L(link.index(), M_LLo_L);
+
+    if (!frame_body_poses->is_X_BL_identity(link.index())) {
+      const math::RigidTransform<T>& X_BL =
+          frame_body_poses->get_X_BL(link.index());
+      const math::RotationMatrix<T>& R_BL = X_BL.rotation();
+      const Vector3<T>& p_BL_B = X_BL.translation();
+      const SpatialInertia<T> M_LLo_B = M_LLo_L.ReExpress(R_BL);
+      const SpatialInertia<T> M_LBo_B = M_LLo_B.Shift(-p_BL_B);
+      frame_body_poses->AddToM_BBo_B(mobod.index(), M_LBo_B);
+    } else {
+      const SpatialInertia<T>& M_LBo_B = M_LLo_L;
+      frame_body_poses->AddToM_BBo_B(mobod.index(), M_LBo_B);
+    }
   }
 }
 

@@ -100,8 +100,7 @@ void MultibodyTreeSystem<T>::SetDefaultParameters(
         .SetDefaultParameters(parameters);
   }
   // Bodies.
-  for (BodyIndex body_index(0); body_index < tree_->num_links();
-       ++body_index) {
+  for (BodyIndex body_index(0); body_index < tree_->num_links(); ++body_index) {
     internal_tree().get_body(body_index).SetDefaultParameters(parameters);
   }
   // Frames.
@@ -136,8 +135,7 @@ MultibodyTree<T>& MultibodyTreeSystem<T>::mutable_tree() {
 }
 
 template <typename T>
-void MultibodyTreeSystem<T>::DeclareMultibodyElementParameters(
-    int* num_frame_body_pose_slots_needed) {
+void MultibodyTreeSystem<T>::DeclareMultibodyElementParameters() {
   // Mobilizers.
   for (MobodIndex mobilizer_index(0); mobilizer_index < tree_->num_mobilizers();
        ++mobilizer_index) {
@@ -157,20 +155,14 @@ void MultibodyTreeSystem<T>::DeclareMultibodyElementParameters(
         .DeclareParameters(this);
   }
   // Bodies.
-  for (BodyIndex body_index(0); body_index < tree_->num_links();
-       ++body_index) {
+  for (BodyIndex body_index(0); body_index < tree_->num_links(); ++body_index) {
     mutable_tree().get_mutable_body(body_index).DeclareParameters(this);
   }
   // Frames.
-  *num_frame_body_pose_slots_needed = 1;  // 0th is for an identity transform.
   for (FrameIndex frame_index(0); frame_index < tree_->num_frames();
        ++frame_index) {
     Frame<T>& frame = mutable_tree().get_mutable_frame(frame_index);
     frame.DeclareParameters(this);
-    // This is where the extracted, reformatted, and composed body pose X_BF for
-    // this Frame will be stored in the frame body poses cache entry.
-    frame.set_body_pose_index_in_cache(
-        frame.is_body_frame() ? 0 : (*num_frame_body_pose_slots_needed)++);
   }
   // Force Elements.
   for (ForceElementIndex force_element_index(0);
@@ -192,9 +184,7 @@ void MultibodyTreeSystem<T>::Finalize() {
     tree_->Finalize();
   }
 
-  int num_frame_body_poses_needed{-1};
-  DeclareMultibodyElementParameters(&num_frame_body_poses_needed);
-  DRAKE_DEMAND(num_frame_body_poses_needed > 0);  // Always at least 1.
+  DeclareMultibodyElementParameters();
 
   // Declare state.
   if (is_discrete_) {
@@ -214,14 +204,14 @@ void MultibodyTreeSystem<T>::Finalize() {
 
   cache_indexes_.reflected_inertia =
       this->DeclareCacheEntry(std::string("reflected inertia"),
-                              VectorX<T>(internal_tree().num_velocities()),
+                              VectorX<T>(tree_->num_velocities()),
                               &MultibodyTreeSystem<T>::CalcReflectedInertia,
                               {this->all_parameters_ticket()})
           .cache_index();
 
   cache_indexes_.joint_damping =
       this->DeclareCacheEntry(std::string("joint damping"),
-                              VectorX<T>(internal_tree().num_velocities()),
+                              VectorX<T>(tree_->num_velocities()),
                               &MultibodyTreeSystem<T>::CalcJointDamping,
                               {this->all_parameters_ticket()})
           .cache_index();
@@ -229,8 +219,8 @@ void MultibodyTreeSystem<T>::Finalize() {
   cache_indexes_.frame_body_poses =
       this->DeclareCacheEntry(
               std::string("frame pose in body frame"),
-              FrameBodyPoseCache<T>(internal_tree().num_mobods(),
-                                    num_frame_body_poses_needed),
+              FrameBodyPoseCache<T>(tree_->num_links(), tree_->num_frames(),
+                                    tree_->num_mobods()),
               &MultibodyTreeSystem<T>::CalcFrameBodyPoses,
               {this->all_parameters_ticket()})
           .cache_index();

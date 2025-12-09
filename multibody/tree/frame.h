@@ -519,38 +519,38 @@ class Frame : public MultibodyElement<T> {
   /// reference rather than having to extract and reformat parameters, and
   /// compose with parent and ancestor poses at runtime.
   ///
-  /// At the time parameters are allocated we assign a slot in the body pose
-  /// cache entry to each %Frame and record its index using this function. (The
-  /// index for a RigidBodyFrame will refer to an identity transform.) Note that
-  /// the body pose index is not necessarily the same as the %Frame index
-  /// because all RigidBodyFrames can share an entry. (Of course if you know you
-  /// are working with a RigidBodyFrame you don't need to ask about its body
-  /// pose!)
-  void set_body_pose_index_in_cache(int body_pose_index) {
-    body_pose_index_in_cache_ = body_pose_index;
-  }
+  /// When we are optimizing assemblies using composite Mobods, the pose of
+  /// a frame on its Mobod (X_BF) can differ from its pose on its Link (X_LF).
+  /// Most multibody computations need X_BF, but X_LF is available also.
 
-  /// (Internal use only) Retrieve this %Frame's body pose index in the cache.
-  int get_body_pose_index_in_cache() const { return body_pose_index_in_cache_; }
+  /// (Internal use only) Given an already up-to-date frame body pose cache,
+  /// extract X_LF for this %Frame from it.
+  /// @note Be sure you have called MultibodyTreeSystem::EvalFrameBodyPoses()
+  ///       since the last parameter change; we can't check here.
+  /// @retval X_LF pose of this frame in its Link's frame
+  const math::RigidTransform<T>& get_X_LF(
+      const internal::FrameBodyPoseCache<T>& frame_body_poses) const {
+    return frame_body_poses.get_X_LF(index());
+  }
 
   /// (Internal use only) Given an already up-to-date frame body pose cache,
   /// extract X_BF for this %Frame from it.
   /// @note Be sure you have called MultibodyTreeSystem::EvalFrameBodyPoses()
   ///       since the last parameter change; we can't check here.
-  /// @retval X_BF pose of this frame in its body's frame
+  /// @retval X_BF pose of this frame in its Mobod's frame
   const math::RigidTransform<T>& get_X_BF(
       const internal::FrameBodyPoseCache<T>& frame_body_poses) const {
-    return frame_body_poses.get_X_BF(body_pose_index_in_cache_);
+    return frame_body_poses.get_X_BF(index());
   }
 
   /// (Internal use only) Given an already up-to-date frame body pose cache,
   /// extract X_FB (=X_BF⁻¹) for this %Frame from it.
   /// @note Be sure you have called MultibodyTreeSystem::EvalFrameBodyPoses()
   ///       since the last parameter change; we can't check here.
-  /// @retval X_FB inverse of this frame's pose in its body's frame
+  /// @retval X_FB inverse of this frame's pose in its Mobod's frame
   const math::RigidTransform<T>& get_X_FB(
       const internal::FrameBodyPoseCache<T>& frame_body_poses) const {
-    return frame_body_poses.get_X_FB(body_pose_index_in_cache_);
+    return frame_body_poses.get_X_FB(index());
   }
 
   /// (Internal use only) Given an already up-to-date frame body pose cache,
@@ -561,7 +561,7 @@ class Frame : public MultibodyElement<T> {
   /// @see get_X_BF()
   bool is_X_BF_identity(
       const internal::FrameBodyPoseCache<T>& frame_body_poses) const {
-    return frame_body_poses.is_X_BF_identity(body_pose_index_in_cache_);
+    return frame_body_poses.is_X_BF_identity(index());
   }
   //@}
 
@@ -654,8 +654,6 @@ class Frame : public MultibodyElement<T> {
 
   // The body associated with this frame.
   const RigidBody<T>& body_;
-
-  int body_pose_index_in_cache_{-1};
 };
 
 }  // namespace multibody
