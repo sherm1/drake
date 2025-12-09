@@ -1344,6 +1344,9 @@ class WeldMobilizerTest : public ::testing::Test {
     model->AddJoint(
         std::make_unique<WeldJoint<double>>("weld1", frame_F, frame_M, X_FM_));
 
+    // TODO(sherm1) Temp hack.
+    model->SetCombineWeldedBodies(true);
+
     // We are done adding modeling elements. Transfer tree to system and get
     // a Context.
     system_ = std::make_unique<MultibodyTreeSystem<double>>(std::move(model));
@@ -1388,8 +1391,10 @@ TEST_F(WeldMobilizerTest, PositionKinematics) {
   std::vector<math::RigidTransformd> body_poses;
   tree().CalcAllBodyPosesInWorld(*context_, &body_poses);
 
-  EXPECT_TRUE(body_poses[body1_->index()].IsNearlyEqualTo(X_WB1_, kTolerance));
-  EXPECT_TRUE(body_poses[body2_->index()].IsNearlyEqualTo(X_WB2_, kTolerance));
+  EXPECT_TRUE(CompareMatrices(body_poses[body1_->index()].GetAsMatrix34(),
+                              X_WB1_.GetAsMatrix34(), kTolerance));
+  EXPECT_TRUE(CompareMatrices(body_poses[body2_->index()].GetAsMatrix34(),
+                              X_WB2_.GetAsMatrix34(), kTolerance));
 }
 
 // Verify proper operation of the Joint internal use only method for generating
