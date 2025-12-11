@@ -904,6 +904,97 @@ void MultibodyTree<T>::FinalizeInternals() {
 }
 
 template <typename T>
+void MultibodyTree<T>::SetBaseBodyJointType(
+    BaseBodyJointType joint_type,
+    std::optional<ModelInstanceIndex> model_instance) {
+  DRAKE_THROW_UNLESS(!is_finalized());
+  LinkJointGraph& graph = mutable_graph();
+
+  // Obtain the current option flags to preserve the ones that don't have
+  // to do with base body joints.
+  ForestBuildingOptions options =
+      model_instance.has_value()
+          ? graph.get_forest_building_options_in_use(*model_instance)
+          : graph.get_global_forest_building_options();
+
+  // Clear the existing relevant settings. This leaves us with the default
+  // which is to use quaternion floating joints for base bodies.
+  options = options & ~ForestBuildingOptions::kUseRpyFloatingJoints;
+  options = options & ~ForestBuildingOptions::kUseFixedBase;
+
+  switch (joint_type) {
+    case BaseBodyJointType::kQuaternionFloatingJoint:
+      // Nothing to do here; this is the default.
+      break;
+    case BaseBodyJointType::kRpyFloatingJoint:
+      options = options | ForestBuildingOptions::kUseRpyFloatingJoints;
+      break;
+    case BaseBodyJointType::kWeldJoint:
+      options = options | ForestBuildingOptions::kUseFixedBase;
+      break;
+  }
+
+  if (model_instance.has_value()) {
+    graph.SetForestBuildingOptions(*model_instance, options);
+  } else {
+    graph.SetGlobalForestBuildingOptions(options);
+  }
+}
+
+template <typename T>
+void MultibodyTree<T>::SetCombineWeldedBodies(
+    bool combine, std::optional<ModelInstanceIndex> model_instance) {
+  LinkJointGraph& graph = mutable_graph();
+
+  // Obtain the current option flag to preserve the ones that don't have
+  // to do with combining rigid bodies.
+  ForestBuildingOptions options =
+      model_instance.has_value()
+          ? graph.get_forest_building_options_in_use(*model_instance)
+          : graph.get_global_forest_building_options();
+
+  // Clear the existing setting. This leaves us with the default which is _not_
+  // to combine welded bodies.
+  options = options & ~ForestBuildingOptions::kOptimizeWeldedLinksAssemblies;
+
+  if (combine) {
+    options = options | ForestBuildingOptions::kOptimizeWeldedLinksAssemblies;
+  }
+
+  if (model_instance.has_value()) {
+    graph.SetForestBuildingOptions(*model_instance, options);
+  } else {
+    graph.SetGlobalForestBuildingOptions(options);
+  }
+}
+
+template <typename T>
+BaseBodyJointType MultibodyTree<T>::GetBaseBodyJointType(
+    std::optional<ModelInstanceIndex> model_instance) const {
+  const ForestBuildingOptions options =
+      model_instance.has_value()
+          ? graph().get_forest_building_options_in_use(*model_instance)
+          : graph().get_global_forest_building_options();
+  if (static_cast<bool>(options & ForestBuildingOptions::kUseRpyFloatingJoints))
+    return BaseBodyJointType::kRpyFloatingJoint;
+  if (static_cast<bool>(options & ForestBuildingOptions::kUseFixedBase))
+    return BaseBodyJointType::kWeldJoint;
+  return BaseBodyJointType::kQuaternionFloatingJoint;
+}
+
+template <typename T>
+bool MultibodyTree<T>::GetCombineWeldedBodies(
+    std::optional<ModelInstanceIndex> model_instance) const {
+  const ForestBuildingOptions options =
+      model_instance.has_value()
+          ? graph().get_forest_building_options_in_use(*model_instance)
+          : graph().get_global_forest_building_options();
+
+  return static_cast<bool>(
+      options & ForestBuildingOptions::kOptimizeWeldedLinksAssemblies);
+}
+
+template <typename T>
 void MultibodyTree<T>::Finalize() {
   DRAKE_MBT_THROW_IF_FINALIZED();
 
@@ -1507,6 +1598,20 @@ void MultibodyTree<T>::CalcFrameBodyPoses(
   // First, find the pose X_BL of each Link frame L on its Mobod B. This
   // is normally identity except if B is a composite mobod and L is not its
   // active (most inboard) link.
+
+  std::vector<uint8_t> got_X_BL(num_links(), false);
+  for (const SpanningForest::Mobod& mobod : forest().mobods()) {
+    const Link& active_link = graph().links(mobod.link_ordinal()); // WRONG
+    frame_body_poses->SetX_BL(active_link.index(),
+                              math::RigidTransform<T>::Identity());
+    got_X_BL[mobod.link_ordinal()] = true;
+    if (!mobod.is_composite()) continue;
+
+    for (const LinkOrdinal& link_ordinal : mobod.follower_link_ordinals()) {
+      if (link_ordinal == active_link.ordinal()) continue; // Already done.
+    }
+  }
+
   for (const Link<T>* link : links_.elements()) {
     // TODO(sherm1) Assuming 1:1 Link:Mobod (no composites).
     frame_body_poses->SetX_BL(link->index(),

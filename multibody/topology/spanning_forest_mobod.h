@@ -96,6 +96,9 @@ class SpanningForest::Mobod {
     return follower_link_ordinals_;
   }
 
+  /* Returns true if there is more than one link following this Mobod. */
+  bool is_composite() const { return ssize(follower_link_ordinals) > 1; }
+
   /* Returns true if the given Link is one of the followers of this %Mobod. */
   bool HasFollower(LinkOrdinal link_ordinal) const {
     DRAKE_DEMAND(link_ordinal.is_valid());
