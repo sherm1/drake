@@ -1365,19 +1365,23 @@ void MultibodyTree<T>::SetFreeBodyRandomAnglesDistributionOrThrow(
   maybe_rpy_mobilizer->set_random_angles_distribution(angles.vector());
 }
 
-// Note that the result is indexed by BodyIndex, not MobodIndex.
+// Note that the result is indexed by BodyIndex (LinkIndex), not MobodIndex.
+// That is, we're returning X_WL for each Link L.
 template <typename T>
 void MultibodyTree<T>::CalcAllBodyPosesInWorld(
     const systems::Context<T>& context,
-    std::vector<RigidTransform<T>>* X_WB) const {
-  DRAKE_THROW_UNLESS(X_WB != nullptr);
-  if (ssize(*X_WB) != num_links()) {
-    X_WB->resize(num_links(), RigidTransform<T>::Identity());
+    std::vector<RigidTransform<T>>* X_WL) const {
+  DRAKE_THROW_UNLESS(X_WL != nullptr);
+  if (ssize(*X_WL) != num_links()) {
+    X_WL->resize(num_links(), RigidTransform<T>::Identity());
   }
+
+  // TODO(sherm1) We're indexing by LinkOrdinal here but the caller expects
+  //  LinkIndex instead. However, those are identical currently since we don't
+  //  support removing links. Fix this when we do.
   const PositionKinematicsCache<T>& pc = EvalPositionKinematics(context);
-  for (BodyIndex body_index(0); body_index < num_links(); ++body_index) {
-    const MobodIndex mobod_index = get_body(body_index).mobod_index();
-    X_WB->at(body_index) = pc.get_X_WB(mobod_index);
+  for (LinkOrdinal ordinal(0); ordinal < num_links(); ++ordinal) {
+    X_WL->at(ordinal) = pc.get_X_WL(ordinal);
   }
 }
 
@@ -1407,6 +1411,24 @@ void MultibodyTree<T>::CalcPositionKinematicsCache(
 
   const Eigen::VectorBlock<const VectorX<T>> q_block = get_positions(context);
   const T* q = q_block.data();
+
+  // TODO(sherm1) The world composite link poses are independent of q and
+  //  should be set once parameters are known (i.e. when the FrameBodyPoseCache
+  //  is filled in.) For now we're recomputing these for every q change.
+
+  // Take care of any links that are welded to the World composite. The world
+  // mobod's active link is link 0 (the world link) with a fixed identity pose;
+  // no need to set that. Also X_WB[0] is identity so X_WL = X_WB * X_BL = X_BL
+  // for all its followers.
+  const SpanningForest::Mobod& world_mobod = forest().mobods(MobodIndex(0));
+  const std::vector<LinkOrdinal>& world_followers =
+      world_mobod.follower_link_ordinals();
+  for (size_t i = 1; i < world_followers.size(); ++i) {
+    const LinkOrdinal link_ordinal = world_followers[i];
+    const math::RigidTransform<T>& X_BL =
+        frame_body_pose_cache.get_X_BL(link_ordinal);  // Body B to link L
+    pc->SetX_WL(link_ordinal, X_BL);
+  }
 
   // With the kinematics information across mobilizers and the kinematics
   // information for each body, we are now in position to perform a base-to-tip
