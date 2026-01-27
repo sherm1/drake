@@ -42,6 +42,7 @@ Results are indexed by MobodIndex unless otherwise specified:
  - H_FM: Mobilizer's hinge matrix, the Jacobian ∂V_FM/∂v that maps the
          mobilizer's generalized velocities v to cross-mobilizer spatial
          velocities V_FM = H_FM * v.
+
 @tparam_default_scalar */
 
 // TODO(sherm1) X_WL mostly duplicates X_WB (they are identical if there are no
@@ -190,9 +191,7 @@ class PositionKinematicsCache {
   // (including the World link) and possibly some ephemeral links.
   int num_links_{0};
 
-  // Pools store entries in the same order as the mobilized bodies (BodyNodes)
-  // in the multibody forest, i.e. in DFT (Depth-First Traversal) order.
-  // Therefore clients of this class will access entries by MobodIndex.
+  // These are indexed by MobodIndex so are in depth-first order.
   std::vector<RigidTransform<T>> X_WB_pool_;
   std::vector<RigidTransform<T>> X_PB_pool_;
   std::vector<RigidTransform<T>> X_FM_pool_;
