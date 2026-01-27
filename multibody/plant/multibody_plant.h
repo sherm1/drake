@@ -1257,7 +1257,7 @@ class MultibodyPlant final : public internal::MultibodyTreeSystem<T> {
   const systems::OutputPort<T>& get_generalized_contact_forces_output_port(
       ModelInstanceIndex model_instance) const;
 
-  // BLAH(sherm1) Modify the next comment to explain that unmodeled joints will
+  // TODO(sherm1) Modify the next comment to explain that unmodeled joints will
   //  have NaN reaction force entries here. (Joints can be unmodeled because
   //  they were removed or because they are internal to a composite body.)
 
