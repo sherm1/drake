@@ -15,16 +15,18 @@ namespace drake {
 namespace multibody {
 namespace internal {
 
-// This class is one of the cache entries in the Context. It holds the
-// kinematics results of computations that depend not only on the generalized
-// positions and generalized velocities, but also on the time derivatives of
-// the generalized coordinates.
-// Acceleration kinematics results include:
-// - Spatial acceleration `A_WB` for each body B in the model as measured and
-//   expressed in the world frame W.
-// - Generalized accelerations `vdot` for the entire model.
-//
-// @tparam_default_scalar
+/* This class is one of the cache entries in the Context. It holds the
+kinematics results of computations that depend not only on the generalized
+positions q and velocities v of the system, but also on their time derivatives.
+
+- A_WB:   Spatial acceleration of mobod B in W for every Mobod. Frame B is
+          the same as frame L₀ of a mobod's active link.
+- A_WL:   Spatial acceleration of link L in W for every link. Indexed by
+          LinkOrdinal. Same as A_WB if L is the active link of mobod B.
+- vdot:   The system generalized accelerations, that is, the time derivative
+          dv/dt of the system generalized velocities v.
+
+@tparam_default_scalar */
 template <typename T>
 class AccelerationKinematicsCache {
  public:
@@ -38,12 +40,10 @@ class AccelerationKinematicsCache {
   // bug detection.
   explicit AccelerationKinematicsCache(const internal::SpanningForest& forest) {
     Allocate(forest);
-    DRAKE_ASSERT_VOID(InitializeToNaN());
-    // Sets defaults: drake::multibody::world_mobod_index() defines the unique
-    // index to the world body and is defined in multibody_tree_indexes.h.
+    InitializeToNaN();
     // World's acceleration is always zero.
-    A_WB_pool_[world_mobod_index()].SetZero();
-    vdot_.setZero();
+    A_WB_pool_[MobodIndex(0)].SetZero();
+    A_WL_pool_[LinkOrdinal(0)].SetZero();
   }
 
   // For the body B associated with mobilized body `mobod_index`, returns A_WB,
@@ -85,35 +85,46 @@ class AccelerationKinematicsCache {
   // Mutable version of get_vdot().
   VectorX<T>& get_mutable_vdot() { return vdot_; }
 
- private:
-  // Pools store entries in the same order as the mobilized bodies (BodyNodes)
-  // in the multibody forest, i.e. in DFT (Depth-First Traversal) order.
-  // Therefore clients of this class will access entries by MobodIndex, see
-  // `get_A_WB()` for instance.
+  // Set all acceleration fields to zero. This must be done explicitly; on
+  // construction the fields are all set to NaN.
+  void SetToZero() {
+    for (SpatialAcceleration<T>& acc : A_WB_pool_) {
+      acc.SetZero();
+    }
+    for (SpatialAcceleration<T>& acc : A_WL_pool_) {
+      acc.SetZero();
+    }
+    vdot_.setZero();
+  }
 
-  // Return the number of mobilized bodies in this multibody tree cache.
-  int get_num_mobods() const { return static_cast<int>(A_WB_pool_.size()); }
+ private:
+  int get_num_mobods() const { return ssize(A_WB_pool_); }
+  int get_num_links() const { return ssize(A_WL_pool_); }
 
   // Allocates resources for this acceleration kinematics cache.
   void Allocate(const internal::SpanningForest& forest) {
-    const int num_mobods = forest.num_mobods();
-    A_WB_pool_.resize(num_mobods);
-    const int num_velocities = forest.num_velocities();
-    vdot_.resize(num_velocities);
+    A_WB_pool_.resize(forest.num_mobods());
+    A_WL_pool_.resize(forest.num_links());
+    vdot_.resize(forest.num_velocities());
   }
 
   // Initializes all pools to have NaN values to ease bug detection when entries
   // are accidentally left uninitialized.
   void InitializeToNaN() {
-    for (MobodIndex mobod_index(0); mobod_index < get_num_mobods();
-         ++mobod_index) {
-      A_WB_pool_[mobod_index].SetNaN();
+    for (SpatialAcceleration<T>& acc : A_WB_pool_) {
+      acc.SetNaN();
+    }
+    for (SpatialAcceleration<T>& acc : A_WL_pool_) {
+      acc.SetNaN();
+    }
+    for (T& vdot : vdot_) {
+      vdot = NAN;
     }
   }
 
-  // Number of body nodes in the corresponding MultibodyTree.
   std::vector<SpatialAcceleration<T>> A_WB_pool_;  // Indexed by MobodIndex.
-  VectorX<T> vdot_;
+  std::vector<SpatialAcceleration<T>> A_WL_pool_;  // Indexed by LinkOrdinal.
+  VectorX<T> vdot_;                                // 0..nv-1
 };
 
 }  // namespace internal
