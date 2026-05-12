@@ -1411,6 +1411,8 @@ class MultibodyTree {
   void CalcJointDamping(const systems::Context<T>& context,
                         VectorX<T>* joint_damping) const;
 
+  // After all frame pose and mass property parameters have values, calculates
+  // and caches the state-independent results in the FrameBodyPoseCache.
   void CalcFrameBodyPoses(const systems::Context<T>& context,
                           FrameBodyPoseCache<T>* frame_body_poses) const;
 

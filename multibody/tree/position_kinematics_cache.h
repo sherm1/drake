@@ -16,6 +16,9 @@ namespace drake {
 namespace multibody {
 namespace internal {
 
+template <typename T>
+class FrameBodyPoseCache;
+
 /* This class is one of the cache entries in the Context. It holds the
 kinematics results of computations that only depend on the generalized
 positions q of the system.
@@ -154,6 +157,15 @@ class PositionKinematicsCache {
     DRAKE_ASSERT(0 <= mobod_index && mobod_index < num_mobods_);
     return p_PoBo_W_pool_[mobod_index];
   }
+
+  // Once we know where the links are placed on the World composite, we can fill
+  // in X_WL for those links once and for all. X_WL₀ (≜ X_WL[link₀]) and
+  // X_WB₀ (≜ X_WB[mobod₀]) are identity transforms (set during allocation).
+  // Consequently, X_WLᵢ = X_WB₀ * X_B₀Lᵢ = X_B₀Lᵢ for each of the links Lᵢ that
+  // are fixed to World.
+  void PrecomputeWorldComposite(
+      const SpanningForest& forest,
+      const FrameBodyPoseCache<T>& frame_body_pose_cache);
 
  private:
   // Allocates resources for this position kinematics cache.

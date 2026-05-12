@@ -45,6 +45,13 @@ Mass properties
  - the SpatialInertia M_BBo_B of every mobod B about its body origin Bo,
    expressed in B. This differs from M_LLo_L when B is a composite mobod.
 
+World composite precalculations
+-------------------------------
+Position kinematics for links fixed to World can be precalculated once the
+frame parameters are set. This cache keeps a writable pointer to the
+position kinematics cache so we can cache those precomputations whenever
+we recalculate the FrameBodyPoseCache.
+
 @tparam_default_scalar */
 template <typename T>
 class FrameBodyPoseCache {

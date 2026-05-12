@@ -1410,23 +1410,9 @@ void MultibodyTree<T>::CalcPositionKinematicsCache(
   const Eigen::VectorBlock<const VectorX<T>> q_block = get_positions(context);
   const T* q = q_block.data();
 
-  // TODO(sherm1) The world composite link poses are independent of q and
-  //  should be set once parameters are known (i.e. when the FrameBodyPoseCache
-  //  is filled in.) For now we're recomputing these for every q change.
-
-  // Take care of any links that are welded to the World composite. The world
-  // mobod's active link is link 0 (the world link) with a fixed identity pose;
-  // no need to set that. Also X_WB[0] is identity so X_WL = X_WB * X_BL = X_BL
-  // for all its followers.
-  const SpanningForest::Mobod& world_mobod = forest().mobods(MobodIndex(0));
-  const std::vector<LinkOrdinal>& world_followers =
-      world_mobod.follower_link_ordinals();
-  for (size_t i = 1; i < world_followers.size(); ++i) {
-    const LinkOrdinal link_ordinal = world_followers[i];
-    const math::RigidTransform<T>& X_BL =
-        frame_body_pose_cache.get_X_BL(link_ordinal);  // Body B to link L
-    pc->SetX_WL(link_ordinal, X_BL);
-  }
+  // The world composite link poses X_WL are independent of q and are set once
+  // the link pose parameters are known (i.e. when the FrameBodyPoseCache is
+  // filled in.) So we can skip the World mobod here.
 
   // With the kinematics information across mobilizers and the kinematics
   // information for each body, we are now in position to perform a base-to-tip
