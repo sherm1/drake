@@ -48,9 +48,8 @@ Mass properties
 World composite precalculations
 -------------------------------
 Position kinematics for links fixed to World can be precalculated once the
-frame parameters are set. This cache keeps a writable pointer to the
-position kinematics cache so we can cache those precomputations whenever
-we recalculate the FrameBodyPoseCache.
+frame parameters are set. Those entries of the PositionKinematicsCache should
+be filled in whenever the FrameBodyPoseCache is recomputed.
 
 @tparam_default_scalar */
 template <typename T>

@@ -17,7 +17,7 @@ namespace internal {
 
 /* This class is one of the cache entries in the Context. It holds the
 kinematics results of computations that depend not only on the generalized
-positions q and velocities v of the system, but also on their time derivatives.
+positions q and velocities v of the system, but also on accelerations.
 
 - A_WB:   Spatial acceleration of mobod B in W for every Mobod. Frame B is
           the same as frame L₀ of a mobod's active link.
@@ -33,18 +33,9 @@ class AccelerationKinematicsCache {
   DRAKE_DEFAULT_COPY_AND_MOVE_AND_ASSIGN(AccelerationKinematicsCache);
 
   // Constructs an acceleration kinematics cache entry for the given
-  // SpanningForest.
-  // In Release builds specific entries are left uninitialized resulting in a
-  // zero cost operation. However in Debug builds those entries are set to NaN
-  // so that operations using this uninitialized cache entry fail fast, easing
-  // bug detection.
-  explicit AccelerationKinematicsCache(const internal::SpanningForest& forest) {
-    Allocate(forest);
-    InitializeToNaN();
-    // World's acceleration is always zero.
-    A_WB_pool_[MobodIndex(0)].SetZero();
-    A_WL_pool_[LinkOrdinal(0)].SetZero();
-  }
+  // SpanningForest. All quantities are initialized to NaN except for
+  // World and World-fixed Links whose accelerations are set to zero.
+  explicit AccelerationKinematicsCache(const SpanningForest& forest);
 
   // For the body B associated with mobilized body `mobod_index`, returns A_WB,
   // body B's spatial acceleration in the world frame W.
@@ -87,40 +78,18 @@ class AccelerationKinematicsCache {
 
   // Set all acceleration fields to zero. This must be done explicitly; on
   // construction the fields are all set to NaN.
-  void SetToZero() {
-    for (SpatialAcceleration<T>& acc : A_WB_pool_) {
-      acc.SetZero();
-    }
-    for (SpatialAcceleration<T>& acc : A_WL_pool_) {
-      acc.SetZero();
-    }
-    vdot_.setZero();
-  }
+  void SetToZero();
 
  private:
   int get_num_mobods() const { return ssize(A_WB_pool_); }
   int get_num_links() const { return ssize(A_WL_pool_); }
 
   // Allocates resources for this acceleration kinematics cache.
-  void Allocate(const internal::SpanningForest& forest) {
-    A_WB_pool_.resize(forest.num_mobods());
-    A_WL_pool_.resize(forest.num_links());
-    vdot_.resize(forest.num_velocities());
-  }
+  void Allocate(const SpanningForest& forest);
 
   // Initializes all pools to have NaN values to ease bug detection when entries
   // are accidentally left uninitialized.
-  void InitializeToNaN() {
-    for (SpatialAcceleration<T>& acc : A_WB_pool_) {
-      acc.SetNaN();
-    }
-    for (SpatialAcceleration<T>& acc : A_WL_pool_) {
-      acc.SetNaN();
-    }
-    for (T& vdot : vdot_) {
-      vdot = NAN;
-    }
-  }
+  void InitializeToNaN();
 
   std::vector<SpatialAcceleration<T>> A_WB_pool_;  // Indexed by MobodIndex.
   std::vector<SpatialAcceleration<T>> A_WL_pool_;  // Indexed by LinkOrdinal.

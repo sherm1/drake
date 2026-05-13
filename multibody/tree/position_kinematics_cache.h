@@ -40,11 +40,12 @@ Results are indexed by MobodIndex unless otherwise specified:
  - p_PoBo_W:
          Position of mobod B's origin Bo measured in its parent (inboard) mobod
          P, expressed in world frame W.
+ - p_BoLo_W:
+         Position of link L's origin Lo measured from its mobod B's origin Bo,
+         expressed in the world frame W. Indexed by LinkOrdinal. Zero for the
+         active link L₀ (since B=L₀).
  - X_FM: Pose of mobilizer's outboard frame M measured and expressed in
          its inboard frame F.
- - H_FM: Mobilizer's hinge matrix, the Jacobian ∂V_FM/∂v that maps the
-         mobilizer's generalized velocities v to cross-mobilizer spatial
-         velocities V_FM = H_FM * v.
 
 @tparam_default_scalar */
 
@@ -66,10 +67,7 @@ class PositionKinematicsCache {
   template <typename U>
   using RigidTransform = drake::math::RigidTransform<U>;
 
-  explicit PositionKinematicsCache(const SpanningForest& forest)
-      : num_mobods_(forest.num_mobods()), num_links_(forest.num_links()) {
-    Allocate();
-  }
+  explicit PositionKinematicsCache(const SpanningForest& forest);
 
   // Returns a const reference to pose `X_WB` of the body B (associated with
   // mobilized body mobod_index) as measured and expressed in the world frame W.
@@ -97,6 +95,20 @@ class PositionKinematicsCache {
   void SetX_WL(LinkOrdinal ordinal, const math::RigidTransform<T>& X_WL) {
     DRAKE_DEMAND(0 <= ordinal && ordinal < num_links_);
     X_WL_pool_[ordinal] = X_WL;
+  }
+
+  // Returns X_BL.translation() re-expressed in the world frame W.
+  // @param[in] ordinal The LinkOrdinal for the link L.
+  // @returns p_BoLo_W, the position of link L's origin Lo measured from its
+  //          mobod B's origin Bo, expressed in the world frame W.
+  const Vector3<T>& get_p_BoLo_W(LinkOrdinal ordinal) const {
+    DRAKE_ASSERT(0 <= ordinal && ordinal < num_links_);
+    return p_BoLo_W_pool_[ordinal];
+  }
+
+  void Set_p_BoLo_W(LinkOrdinal ordinal, const Vector3<T>& p_BoLo_W) {
+    DRAKE_DEMAND(0 <= ordinal && ordinal < num_links_);
+    p_BoLo_W_pool_[ordinal] = p_BoLo_W;
   }
 
   // Returns a const reference to the rotation matrix `R_WB` that relates the
@@ -169,37 +181,17 @@ class PositionKinematicsCache {
 
  private:
   // Allocates resources for this position kinematics cache.
-  void Allocate() {
-    X_WB_pool_.resize(num_mobods_);
-    // Even though RigidTransform defaults to identity, we make it explicit.
-    // This pose will never change after this initialization.
-    X_WB_pool_[world_mobod_index()] = RigidTransform<T>::Identity();
-
-    X_WL_pool_.resize(num_links_);
-    X_WL_pool_[world_link_ordinal()] = RigidTransform<T>::Identity();
-
-    X_PB_pool_.resize(num_mobods_);
-    X_PB_pool_[world_mobod_index()] = NaNPose();  // It should never be used.
-
-    X_FM_pool_.resize(num_mobods_);
-    X_FM_pool_[world_mobod_index()] = NaNPose();  // It should never be used.
-
-    p_PoBo_W_pool_.resize(num_mobods_);
-    // p_PoBo_W for the world body should never be used.
-    p_PoBo_W_pool_[world_mobod_index()].setConstant(
-        std::numeric_limits<
-            typename Eigen::NumTraits<T>::Literal>::quiet_NaN());
-  }
+  void Allocate();
 
   // Helper method to initialize poses to garbage values including NaNs.
   // This allow us to quickly verify some of the values stored in the pools are
   // never used (however we store them anyway to simplify the indexing).
   static RigidTransform<T> NaNPose() {
     // Note: RotationMatrix will throw in Debug builds if values are NaN. For
-    // our purposes, it is enough the translation has NaN values.
+    // our purposes, it is enough that the translation has NaN values.
     return RigidTransform<T>(
         math::RotationMatrix<T>::Identity(),
-        Vector3<T>::Constant(Eigen::NumTraits<double>::quiet_NaN()));
+        Vector3<T>::Constant(std::numeric_limits<double>::quiet_NaN()));
   }
 
   // Number of Mobods in the multibody forest, including the World mobod.
@@ -215,8 +207,9 @@ class PositionKinematicsCache {
   std::vector<RigidTransform<T>> X_FM_pool_;
   std::vector<Vector3<T>> p_PoBo_W_pool_;
 
-  // This pool is indexed by LinkOrdinal.
+  // These pools are indexed by LinkOrdinal.
   std::vector<RigidTransform<T>> X_WL_pool_;
+  std::vector<Vector3<T>> p_BoLo_W_pool_;
 };
 
 }  // namespace internal

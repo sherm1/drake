@@ -66,6 +66,7 @@ void BodyNodeImpl<T, ConcreteMobilizer>::CalcPositionKinematicsCache_BaseToTip(
   // - X_PB(q_B)
   // - X_WB(q(W:P), q_B)
   // - X_WL(q(W:P), q_B)  (for all links following mobod B)
+  // - p_BoLo_W(q(W:P), q_B)  (for all links following mobod B)
   // - p_PoBo_W(q_B)
   math::RigidTransform<T>& X_FM = pc->get_mutable_X_FM(mobod_index());
   math::RigidTransform<T>& X_PB = pc->get_mutable_X_PB(mobod_index());
@@ -119,11 +120,17 @@ void BodyNodeImpl<T, ConcreteMobilizer>::CalcPositionKinematicsCache_BaseToTip(
   const std::vector<LinkOrdinal>& followers = mobod_B.follower_link_ordinals();
   // The active link L₀ is always the first follower and L₀=B.
   pc->SetX_WL(followers[0], X_WB);
+  // p_BoLo_W for the active link is always zero (set during allocation).
+  const math::RotationMatrix<T>& R_WB = X_WB.rotation();
   for (size_t i = 1; i < followers.size(); ++i) {
     const LinkOrdinal link_ordinal = followers[i];
     const math::RigidTransform<T>& X_BL =
         frame_body_pose_cache.get_X_BL(link_ordinal);  // Body B to link L
-    pc->SetX_WL(link_ordinal, X_WB * X_BL);
+    const Vector3<T> p_BoLo_W = R_WB * X_BL.translation();
+    pc->Set_p_BoLo_W(link_ordinal, p_BoLo_W);
+    pc->SetX_WL(link_ordinal,
+                math::RigidTransform<T>(R_WB * X_BL.rotation(),
+                                        X_WB.translation() + p_BoLo_W));
   }
 
   // Compute shift vector p_PoBo_W from the parent origin to the body origin.
