@@ -27,7 +27,7 @@ PositionKinematicsCache<T>::PositionKinematicsCache(
 }
 
 template <typename T>
-void PositionKinematicsCache<T>::PrecomputeWorldComposite(
+void PositionKinematicsCache<T>::ComputeWorldComposite(
     const SpanningForest& forest,
     const FrameBodyPoseCache<T>& frame_body_pose_cache) {
   const SpanningForest::Mobod& world_mobod = forest.mobods(MobodIndex(0));

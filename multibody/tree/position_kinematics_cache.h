@@ -174,14 +174,26 @@ class PositionKinematicsCache {
   // in X_WL for those links once and for all. X_WL₀ (≜ X_WL[link₀]) and
   // X_WB₀ (≜ X_WB[mobod₀]) are identity transforms (set during allocation).
   // Consequently, X_WLᵢ = X_WB₀ * X_B₀Lᵢ = X_B₀Lᵢ for each of the links Lᵢ that
-  // are fixed to World.
-  void PrecomputeWorldComposite(
+  // are fixed to World. Do nothing if the serial number hasn't changed.
+  void PrecomputeWorldCompositeIfNeeded(
       const SpanningForest& forest,
-      const FrameBodyPoseCache<T>& frame_body_pose_cache);
+      const FrameBodyPoseCache<T>& frame_body_pose_cache,
+      int64_t frame_body_pose_cache_serial_number) {
+    if (world_composite_serial_number_ == frame_body_pose_cache_serial_number)
+      return;
+    ComputeWorldComposite(forest, frame_body_pose_cache);
+    world_composite_serial_number_ = frame_body_pose_cache_serial_number;
+  }
 
  private:
   // Allocates resources for this position kinematics cache.
   void Allocate();
+
+  // Called when we know we have to recompute the parameter-dependent
+  // world composite kinematics.
+  void ComputeWorldComposite(
+      const SpanningForest& forest,
+      const FrameBodyPoseCache<T>& frame_body_pose_cache);
 
   // Helper method to initialize poses to garbage values including NaNs.
   // This allow us to quickly verify some of the values stored in the pools are
@@ -200,6 +212,12 @@ class PositionKinematicsCache {
   // Number of links in the multibody graph includes all user-defined links
   // (including the World link) and possibly some ephemeral links.
   int num_links_{0};
+
+  // The serial number of the last FrameBodyPoseCache that was used to update
+  // the state-independent quantities in this cache (such as the X_WL for links
+  // fixed to World). This is used to determine whether we need to recompute
+  // those quantities when PrecomputeWorldComposite() is called.
+  int64_t world_composite_serial_number_{-1};
 
   // These are indexed by MobodIndex so are in depth-first order.
   std::vector<RigidTransform<T>> X_WB_pool_;

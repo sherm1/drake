@@ -98,26 +98,8 @@ class MultibodyTreeSystem : public systems::LeafSystem<T> {
   const FrameBodyPoseCache<T>& EvalFrameBodyPoses(
       const systems::Context<T>& context) const {
     this->ValidateContext(context);
-    const FrameBodyPoseCache<T>& frame_body_pose_cache =
-        frame_body_poses_cache_entry().template Eval<FrameBodyPoseCache<T>>(
-            context);
-
-    // We don't know whether we actually had to update the FrameBodyPoseCache,
-    // but if we did the PositionKinematicsCache will be out of date since
-    // it depends on the parameterized data in the FrameBodyPoseCache.
-    // In that case, we'll fill in now any position kinematics that are state
-    // independent so that we don't have to recalculate when q's change.
-    systems::CacheEntryValue& cev =
-        position_kinematics_cache_entry().get_mutable_cache_entry_value(
-            context);
-    if (cev.is_out_of_date()) {
-      PositionKinematicsCache<T>& pc =
-          cev.GetMutableValueOrThrow<PositionKinematicsCache<T>>();
-      pc.PrecomputeWorldComposite(tree_->forest(), frame_body_pose_cache);
-      // This does not make the pc up to date!
-    }
-
-    return frame_body_pose_cache;
+    return frame_body_poses_cache_entry().template Eval<FrameBodyPoseCache<T>>(
+        context);
   }
 
   /* Returns a reference to the up-to-date PositionKinematicsCache in the
