@@ -578,10 +578,10 @@ const Link<T>& MultibodyTree<T>::AddLinkImpl(std::unique_ptr<Link<T>> link) {
 
   link->set_parent_tree(this, link_index);
   // MultibodyTree can access selected private methods in RigidBody through its
-  // RigidBodyAttorney.
+  // LinkAttorney.
   // - Register link frame.
   Frame<T>* link_frame =
-      &internal::RigidBodyAttorney<T>::get_mutable_link_frame(link.get());
+      &internal::LinkAttorney<T>::get_mutable_link_frame(link.get());
   const FrameIndex link_frame_index(num_frames());
   link_frame->set_parent_tree(this, link_frame_index);
   DRAKE_DEMAND(link_frame->name() == link->name());
@@ -889,7 +889,7 @@ void MultibodyTree<T>::FinalizeInternals() {
   for (JointIndex i : GetJointIndices()) {
     auto& joint = joints_.get_mutable_element(i);
     const RigidBody<T>& body = joint.child_body();
-    if (RigidBodyAttorney<T>::is_floating_base_body_pre_finalize(body)) {
+    if (LinkAttorney<T>::is_floating_base_body_pre_finalize(body)) {
       DRAKE_DEMAND(joint.is_ephemeral());
       const auto [quaternion, translation] =
           GetDefaultFloatingBaseBodyPoseAsQuaternionVec3Pair(body);
@@ -1523,7 +1523,7 @@ void MultibodyTree<T>::CalcVelocityKinematicsCache(
   // If the model has zero dofs we simply set all spatial velocities to zero and
   // return since there is no work to be done.
   if (num_velocities() == 0) {
-    vc->InitializeToZero();
+    vc->SetToZero();
     return;
   }
 
@@ -1653,14 +1653,14 @@ void MultibodyTree<T>::CalcFrameBodyPoses(
     // connecting a parent link P and child link C. Usually Lᵢ=P and Lₒ=C but
     // the joint may be reversed such that Lᵢ=C and Lₒ=P.
     for (const LinkOrdinal& link_ordinal : mobod.follower_link_ordinals()) {
-      if (got_X_BL[link_ordinal]) continue;  // Already calculated.
+      if (got_X_BL[link_ordinal]) continue;  // Already done.
       const LinkJointGraph::Link& link_Lo = graph().links(link_ordinal);
 
       // Search for the weld joint connecting Lₒ to an inboard link Lᵢ.
       for (JointIndex joint_index : link_Lo.joints()) {
         const LinkJointGraph::Joint& graph_joint =
             graph().joint_by_index(joint_index);
-        if (!graph_joint.is_weld()) continue;  // Wrong joint type (not a weld).
+        if (!graph_joint.is_weld()) continue;  // Wrong joint type.
 
         // We have a weld joint, but it may connect Lₒ to an outboard link which
         // has not yet been processed (its X_BL has not yet been computed). If
@@ -1670,7 +1670,7 @@ void MultibodyTree<T>::CalcFrameBodyPoses(
             graph_joint.other_link_index(link_Lo.index());
         const LinkJointGraph::Link& link_Li =
             graph().link_by_index(link_Li_index);
-        if (!got_X_BL[link_Li.ordinal()]) continue;  // Lᵢ not yet processed.
+        if (!got_X_BL[link_Li.ordinal()]) continue;  // Wrong joint.
 
         // Found the weld joint connecting inboard Lᵢ (X_BLᵢ known) to
         // outboard Lₒ. Retrieve X_BLᵢ for use below in calculating X_BLₒ.
@@ -1745,8 +1745,8 @@ void MultibodyTree<T>::CalcFrameBodyPoses(
 
     // Accumulate the spatial inertia from each link following this mobod.
     for (const LinkOrdinal& link_ordinal : mobod.follower_link_ordinals()) {
-      const LinkIndex link_index = forest().links(link_ordinal).index();
-      const Link<T>& link = links_.get_element(link_index);
+      const BodyIndex body_index = forest().links(link_ordinal).index();
+      const RigidBody<T>& link = links_.get_element(body_index);
       const SpatialInertia<T> M_LLo_L =
           link.CalcSpatialInertiaInBodyFrame(context);
       frame_body_poses->SetM_LLo_L(link_ordinal, M_LLo_L);
@@ -1757,10 +1757,10 @@ void MultibodyTree<T>::CalcFrameBodyPoses(
         const RigidTransform<T>& X_BL =
             frame_body_poses->get_X_BL(link_ordinal);
         const math::RotationMatrix<T>& R_BL = X_BL.rotation();
-        const Vector3<T>& p_BoLo_B = X_BL.translation();
         const Vector3<T> p_BoLcm_B = X_BL * p_LoLcm_L;
-        frame_body_poses->Set_p_BoLcm_B(link_ordinal, p_BoLcm_B);
+        frame_body_poses->Set_p_BoLcm_B(link.ordinal(), p_BoLcm_B);
         if (!is_world_mobod) {
+          const Vector3<T>& p_BoLo_B = X_BL.translation();
           const SpatialInertia<T> M_LLo_B = M_LLo_L.ReExpress(R_BL);
           const SpatialInertia<T> M_LBo_B = M_LLo_B.Shift(-p_BoLo_B);
           frame_body_poses->AddToM_BBo_B(mobod.index(), M_LBo_B);
@@ -4148,6 +4148,7 @@ void MultibodyTree<T>::CalcArticulatedBodyAccelerations(
   const PositionKinematicsCache<T>& pc = EvalPositionKinematics(context);
   const std::vector<Vector6<T>>& H_PB_W_cache =
       EvalAcrossNodeJacobianWrtVExpressedInWorld(context);
+  const VelocityKinematicsCache<T>& vc = EvalVelocityKinematics(context);
   const std::vector<SpatialAcceleration<T>>& Ab_WB_cache =
       EvalSpatialAccelerationBiasCache(context);
 
@@ -4163,7 +4164,7 @@ void MultibodyTree<T>::CalcArticulatedBodyAccelerations(
           node.GetJacobianFromArray(H_PB_W_cache);
 
       node.CalcArticulatedBodyAccelerations_BaseToTip(
-          context, pc, abic, aba_force_cache, H_PB_W, Ab_WB, ac);
+          context, pc, abic, aba_force_cache, H_PB_W, vc, Ab_WB, ac);
     }
   }
 }
@@ -4525,10 +4526,10 @@ RigidBody<T>* MultibodyTree<T>::CloneBodyAndAdd(
   auto body_clone = body.CloneToScalar(*this);
   body_clone->set_parent_tree(this, body_index);
   body_clone->set_model_instance(body.model_instance());
-  // MultibodyTree can access selected private methods in RigidBody through
-  // its RigidBodyAttorney.
+  // MultibodyTree can access selected private methods in RigidBody through its
+  // LinkAttorney.
   Frame<T>* body_frame_clone =
-      &internal::RigidBodyAttorney<T>::get_mutable_link_frame(body_clone.get());
+      &internal::LinkAttorney<T>::get_mutable_link_frame(body_clone.get());
   body_frame_clone->set_parent_tree(this, body_frame_index);
   body_frame_clone->set_model_instance(body.model_instance());
 
